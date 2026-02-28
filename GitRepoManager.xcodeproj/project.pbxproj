@@ -30,8 +30,9 @@
 		021 /* DiffPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121; };
 		022 /* BranchesTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122; };
 		023 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 123; };
-		024 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124; };
-		025 /* AddProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125; };
+			024 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124; };
+			025 /* AddProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125; };
+			026 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,8 +60,9 @@
 		121 /* DiffPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffPreviewView.swift; sourceTree = "<group>"; };
 		122 /* BranchesTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchesTabView.swift; sourceTree = "<group>"; };
 		123 /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
-		124 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
-		125 /* AddProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProjectSheet.swift; sourceTree = "<group>"; };
+			124 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
+			125 /* AddProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProjectSheet.swift; sourceTree = "<group>"; };
+			126 /* AppLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalization.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -116,11 +118,12 @@
 			isa = PBXGroup;
 			children = (
 				108 /* GitCommandRunner.swift */,
-				109 /* GitService.swift */,
-				110 /* ProjectScanner.swift */,
-				111 /* PersistenceService.swift */,
-			);
-			path = Services;
+					109 /* GitService.swift */,
+					110 /* ProjectScanner.swift */,
+					111 /* PersistenceService.swift */,
+					126 /* AppLocalization.swift */,
+				);
+				path = Services;
 			sourceTree = "<group>";
 		};
 		213 /* ViewModels */ = {
@@ -254,9 +257,10 @@
 				021 /* DiffPreviewView.swift in Sources */,
 				022 /* BranchesTabView.swift in Sources */,
 				023 /* TerminalView.swift in Sources */,
-				024 /* StatusBadge.swift in Sources */,
-				025 /* AddProjectSheet.swift in Sources */,
-			);
+					024 /* StatusBadge.swift in Sources */,
+					025 /* AddProjectSheet.swift in Sources */,
+					026 /* AppLocalization.swift in Sources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

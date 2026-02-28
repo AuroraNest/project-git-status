@@ -20,7 +20,7 @@
    - Organization Identifier: 你的组织标识符
    - Interface: **SwiftUI**
    - Language: **Swift**
-4. 选择保存位置（选择 `GitRepoManager` 目录的**上一级**目录）
+4. 选择保存位置（直接选择当前仓库根目录）
 5. 点击 Create
 
 ### 导入源文件
@@ -29,7 +29,7 @@
 
 1. 删除 Xcode 自动生成的 `ContentView.swift` 和 `GitRepoManagerApp.swift`
 2. 在 Xcode 中右键项目 → **Add Files to "GitRepoManager"**
-3. 选择 `GitRepoManager/GitRepoManager` 目录下的所有文件夹（App, Models, Services, ViewModels, Views）
+3. 选择仓库根目录下 `GitRepoManager` 目录里的所有文件夹（App, Models, Services, ViewModels, Views）
 4. 确保勾选 "Copy items if needed" 和 "Create groups"
 5. 点击 Add
 
@@ -57,31 +57,35 @@
 
 ## 项目结构
 
-```
-GitRepoManager/
-├── App/
-│   └── GitRepoManagerApp.swift      # 应用入口
-├── Models/
-│   ├── Project.swift                # 项目模型
-│   ├── GitRepository.swift          # 仓库模型
-│   ├── GitStatus.swift              # 状态模型
-│   ├── GitFile.swift                # 文件模型
-│   └── GitBranch.swift              # 分支模型
-├── Services/
-│   ├── GitCommandRunner.swift       # Git 命令执行器
-│   ├── GitService.swift             # Git 服务层
-│   ├── ProjectScanner.swift         # 项目扫描器
-│   └── PersistenceService.swift     # 持久化服务
-├── ViewModels/
-│   ├── MainViewModel.swift          # 主视图模型
-│   ├── RepositoryViewModel.swift    # 仓库视图模型
-│   └── TerminalViewModel.swift      # 终端视图模型
-└── Views/
-    ├── MainView.swift               # 主视图
-    ├── Sidebar/                     # 侧边栏
-    ├── Detail/                      # 详情视图
-    ├── Terminal/                    # 终端视图
-    └── Components/                  # 通用组件
+```text
+.
+├── GitRepoManager/
+│   ├── App/
+│   │   └── GitRepoManagerApp.swift      # 应用入口
+│   ├── Models/
+│   │   ├── Project.swift                # 项目模型
+│   │   ├── GitRepository.swift          # 仓库模型
+│   │   ├── GitStatus.swift              # 状态模型
+│   │   ├── GitFile.swift                # 文件模型
+│   │   └── GitBranch.swift              # 分支模型
+│   ├── Services/
+│   │   ├── GitCommandRunner.swift       # Git 命令执行器
+│   │   ├── GitService.swift             # Git 服务层
+│   │   ├── ProjectScanner.swift         # 项目扫描器
+│   │   └── PersistenceService.swift     # 持久化服务
+│   ├── ViewModels/
+│   │   ├── MainViewModel.swift          # 主视图模型
+│   │   ├── RepositoryViewModel.swift    # 仓库视图模型
+│   │   └── TerminalViewModel.swift      # 终端视图模型
+│   └── Views/
+│       ├── MainView.swift               # 主视图
+│       ├── Sidebar/                     # 侧边栏
+│       ├── Detail/                      # 详情视图
+│       ├── Terminal/                    # 终端视图
+│       └── Components/                  # 通用组件
+├── GitRepoManager.xcodeproj/
+├── Package.swift
+└── create_xcode_project.sh
 ```
 
 ## 系统要求

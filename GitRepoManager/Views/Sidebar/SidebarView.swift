@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @EnvironmentObject var viewModel: MainViewModel
+    @EnvironmentObject var localization: AppLocalization
     @Binding var selectedRepositoryId: UUID?
 
     var body: some View {
@@ -22,7 +23,7 @@ struct SidebarView: View {
                                 await viewModel.rescanAllProjects()
                             }
                         } label: {
-                            Label("重新扫描", systemImage: "arrow.clockwise")
+                            Label(localization.t(.rescan), systemImage: "arrow.clockwise")
                         }
 
                         Divider()
@@ -30,14 +31,14 @@ struct SidebarView: View {
                         Button(role: .destructive) {
                             viewModel.removeProject(project)
                         } label: {
-                            Label("移除项目", systemImage: "trash")
+                            Label(localization.t(.removeProject), systemImage: "trash")
                         }
                     }
                 }
             }
         }
         .listStyle(.sidebar)
-        .navigationTitle("Git 仓库管理")
+        .navigationTitle(localization.t(.gitRepositoryManager))
     }
 
     private func bindingForProject(_ project: Project) -> Binding<Bool> {
@@ -47,4 +48,3 @@ struct SidebarView: View {
         )
     }
 }
-

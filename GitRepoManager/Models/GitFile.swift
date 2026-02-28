@@ -13,16 +13,7 @@ enum FileStatus: String, Codable {
     case conflicted = "U"
 
     var displayName: String {
-        switch self {
-        case .modified: return "已修改"
-        case .added: return "已添加"
-        case .deleted: return "已删除"
-        case .renamed: return "已重命名"
-        case .copied: return "已复制"
-        case .untracked: return "未跟踪"
-        case .ignored: return "已忽略"
-        case .conflicted: return "冲突"
-        }
+        AppLocalization.shared.fileStatusDisplayName(self)
     }
 
     var iconName: String {

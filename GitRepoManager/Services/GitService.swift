@@ -291,7 +291,7 @@ actor GitService {
         let args = command.components(separatedBy: " ").filter { !$0.isEmpty }
 
         guard let firstArg = args.first else {
-            throw GitError.commandFailed("命令不能为空")
+            throw GitError.commandFailed(AppLocalization.shared.t(.commandCannotBeEmpty))
         }
 
         var gitArgs: [String]
@@ -302,5 +302,19 @@ actor GitService {
         }
 
         return try await runner.execute(gitArgs, in: directory)
+    }
+
+    /// 放弃指定文件的更改（还原到 HEAD）
+    func discardChanges(_ paths: [String], in directory: String) async throws {
+        guard !paths.isEmpty else { return }
+        _ = try await runner.execute(
+            ["restore", "--source=HEAD", "--worktree", "--"] + paths,
+            in: directory
+        )
+    }
+
+    /// 读取文件在 HEAD 的内容（文本）
+    func showFileAtHEAD(path: String, in directory: String) async throws -> String {
+        try await runner.execute(["show", "HEAD:\(path)"], in: directory)
     }
 }

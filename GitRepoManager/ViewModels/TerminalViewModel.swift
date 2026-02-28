@@ -24,14 +24,15 @@ class TerminalViewModel: ObservableObject {
     @Published var historyIndex: Int = -1
 
     private let gitService = GitService()
+    private let l10n = AppLocalization.shared
 
     init(repositoryPath: String) {
         self.repositoryPath = repositoryPath
 
         // 添加欢迎信息
         let repoName = URL(fileURLWithPath: repositoryPath).lastPathComponent
-        outputLines.append(TerminalLine(text: "Git 终端 - \(repoName)"))
-        outputLines.append(TerminalLine(text: "输入 git 命令执行操作（可省略 'git' 前缀）"))
+        outputLines.append(TerminalLine(text: l10n.gitTerminalHeader(repoName)))
+        outputLines.append(TerminalLine(text: l10n.t(.inputGitCommand)))
         outputLines.append(TerminalLine(text: ""))
     }
 
@@ -71,7 +72,7 @@ class TerminalViewModel: ObservableObject {
     func clearOutput() {
         outputLines.removeAll()
         let repoName = URL(fileURLWithPath: repositoryPath).lastPathComponent
-        outputLines.append(TerminalLine(text: "Git 终端 - \(repoName)"))
+        outputLines.append(TerminalLine(text: l10n.gitTerminalHeader(repoName)))
         outputLines.append(TerminalLine(text: ""))
     }
 

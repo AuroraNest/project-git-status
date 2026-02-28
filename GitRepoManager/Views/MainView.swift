@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainView: View {
     @EnvironmentObject var viewModel: MainViewModel
+    @EnvironmentObject var localization: AppLocalization
     @State private var columnVisibility = NavigationSplitViewVisibility.all
 
     var selectedRepository: GitRepository? {
@@ -23,35 +24,53 @@ struct MainView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                Menu {
+                    ForEach(AppLanguage.allCases) { language in
+                        Button {
+                            localization.language = language
+                        } label: {
+                            HStack {
+                                Text(language.optionLabel)
+                                if localization.language == language {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Label(localization.language.optionLabel, systemImage: "globe")
+                }
+                .help(localization.t(.language))
+
                 Button {
                     Task {
                         await viewModel.refreshAll()
                     }
                 } label: {
-                    Label("刷新", systemImage: "arrow.clockwise")
+                    Label(localization.t(.refresh), systemImage: "arrow.clockwise")
                 }
-                .help("刷新所有仓库状态")
+                .help(localization.t(.refreshAllRepositories))
                 .disabled(viewModel.isLoading)
 
                 Button {
                     viewModel.showAddProjectDialog()
                 } label: {
-                    Label("添加项目", systemImage: "plus.circle")
+                    Label(localization.t(.addProject), systemImage: "plus.circle")
                 }
-                .help("添加项目目录")
+                .help(localization.t(.addProjectDirectoryHelp))
             }
         }
         .sheet(isPresented: $viewModel.showingAddProject) {
             AddProjectSheet()
         }
-        .alert("错误", isPresented: $viewModel.showingError) {
-            Button("确定", role: .cancel) { }
+        .alert(localization.t(.error), isPresented: $viewModel.showingError) {
+            Button(localization.t(.confirm), role: .cancel) { }
         } message: {
             Text(viewModel.errorMessage)
         }
         .overlay {
             if viewModel.isLoading {
-                ProgressView("刷新中...")
+                ProgressView(localization.t(.refreshing))
                     .padding()
                     .background(.regularMaterial)
                     .cornerRadius(8)
@@ -62,6 +81,7 @@ struct MainView: View {
 
 struct EmptyStateView: View {
     @EnvironmentObject var viewModel: MainViewModel
+    @EnvironmentObject var localization: AppLocalization
 
     var body: some View {
         VStack(spacing: 16) {
@@ -70,25 +90,25 @@ struct EmptyStateView: View {
                 .foregroundColor(.secondary)
 
             if viewModel.projects.isEmpty {
-                Text("还没有添加项目")
+                Text(localization.t(.noProjectsYet))
                     .font(.title2)
                     .foregroundColor(.secondary)
-                Text("点击上方 + 按钮添加项目目录")
+                Text(localization.t(.clickPlusToAddProjectDirectory))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
 
                 Button {
                     viewModel.showAddProjectDialog()
                 } label: {
-                    Label("添加项目", systemImage: "plus.circle")
+                    Label(localization.t(.addProject), systemImage: "plus.circle")
                 }
                 .buttonStyle(.borderedProminent)
                 .padding(.top, 8)
             } else {
-                Text("选择一个仓库查看详情")
+                Text(localization.t(.selectRepositoryToViewDetails))
                     .font(.title2)
                     .foregroundColor(.secondary)
-                Text("从左侧列表选择仓库")
+                Text(localization.t(.selectRepositoryFromSidebar))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }

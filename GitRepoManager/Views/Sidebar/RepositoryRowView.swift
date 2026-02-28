@@ -3,6 +3,7 @@ import SwiftUI
 struct RepositoryRowView: View {
     let repository: GitRepository
     @EnvironmentObject var viewModel: MainViewModel
+    @EnvironmentObject var localization: AppLocalization
 
     var body: some View {
         HStack(spacing: 8) {
@@ -87,13 +88,13 @@ struct RepositoryRowView: View {
             Button {
                 viewModel.openInFinder(repository)
             } label: {
-                Label("在 Finder 中显示", systemImage: "folder")
+                Label(localization.t(.showInFinder), systemImage: "folder")
             }
 
             Button {
                 viewModel.openInTerminal(repository)
             } label: {
-                Label("在终端中打开", systemImage: "terminal")
+                Label(localization.t(.openInTerminal), systemImage: "terminal")
             }
 
             Divider()
@@ -103,9 +104,8 @@ struct RepositoryRowView: View {
                     await viewModel.refreshRepository(repository)
                 }
             } label: {
-                Label("刷新状态", systemImage: "arrow.clockwise")
+                Label(localization.t(.refreshStatus), systemImage: "arrow.clockwise")
             }
         }
     }
 }
-

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DiffPreviewView: View {
+    @EnvironmentObject var localization: AppLocalization
     let file: GitFile
     @ObservedObject var viewModel: RepositoryViewModel
     @State private var diffContent: String = ""
@@ -34,7 +35,7 @@ struct DiffPreviewView: View {
             if isLoading {
                 VStack {
                     ProgressView()
-                    Text("加载中...")
+                    Text(localization.t(.loading))
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -54,7 +55,7 @@ struct DiffPreviewView: View {
                     Image(systemName: "doc.text")
                         .font(.largeTitle)
                         .foregroundColor(.secondary)
-                    Text("没有差异内容")
+                    Text(localization.t(.noDiffContent))
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -77,7 +78,7 @@ struct DiffPreviewView: View {
         let result = await viewModel.getDiff(for: file)
         diffContent = result
 
-        if result.starts(with: "无法获取差异") {
+        if result.starts(with: localization.t(.unableToGetDiff)) {
             error = result
             diffContent = ""
         }
@@ -137,4 +138,3 @@ struct DiffContentView: View {
         return .clear
     }
 }
-

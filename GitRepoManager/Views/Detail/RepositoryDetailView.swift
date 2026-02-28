@@ -1,14 +1,15 @@
 import SwiftUI
 
 struct RepositoryDetailView: View {
+    @EnvironmentObject var localization: AppLocalization
     let repository: GitRepository
     @StateObject private var viewModel: RepositoryViewModel
     @State private var selectedTab: DetailTab = .changes
 
-    enum DetailTab: String, CaseIterable {
-        case changes = "变更"
-        case branches = "分支"
-        case terminal = "终端"
+    enum DetailTab: CaseIterable {
+        case changes
+        case branches
+        case terminal
     }
 
     init(repository: GitRepository) {
@@ -26,7 +27,7 @@ struct RepositoryDetailView: View {
             // 标签页选择
             Picker("", selection: $selectedTab) {
                 ForEach(DetailTab.allCases, id: \.self) { tab in
-                    Text(tab.rawValue).tag(tab)
+                    Text(title(for: tab)).tag(tab)
                 }
             }
             .pickerStyle(.segmented)
@@ -69,17 +70,29 @@ struct RepositoryDetailView: View {
             }
         }
         // 错误提示
-        .alert("操作失败", isPresented: .constant(viewModel.lastError != nil)) {
-            Button("确定") {
+        .alert(localization.t(.operationFailed), isPresented: .constant(viewModel.lastError != nil)) {
+            Button(localization.t(.confirm)) {
                 viewModel.clearMessages()
             }
         } message: {
             Text(viewModel.lastError ?? "")
         }
     }
+
+    private func title(for tab: DetailTab) -> String {
+        switch tab {
+        case .changes:
+            return localization.t(.changes)
+        case .branches:
+            return localization.t(.branches)
+        case .terminal:
+            return localization.t(.terminal)
+        }
+    }
 }
 
 struct RepositoryHeaderView: View {
+    @EnvironmentObject var localization: AppLocalization
     let repository: GitRepository
     @ObservedObject var viewModel: RepositoryViewModel
 
@@ -117,18 +130,18 @@ struct RepositoryHeaderView: View {
                 Button {
                     Task { await viewModel.pull() }
                 } label: {
-                    Label("拉取", systemImage: "arrow.down.circle")
+                    Label(localization.t(.pull), systemImage: "arrow.down.circle")
                 }
                 .disabled(viewModel.isOperating)
-                .help("从远程拉取更新")
+                .help(localization.t(.pullHelp))
 
                 Button {
                     Task { await viewModel.push() }
                 } label: {
-                    Label("推送", systemImage: "arrow.up.circle")
+                    Label(localization.t(.push), systemImage: "arrow.up.circle")
                 }
                 .disabled(viewModel.isOperating || (viewModel.status?.aheadCount ?? 0) == 0)
-                .help("推送到远程")
+                .help(localization.t(.pushHelp))
 
                 Button {
                     Task { await viewModel.loadStatus() }
@@ -136,11 +149,10 @@ struct RepositoryHeaderView: View {
                     Image(systemName: "arrow.clockwise")
                 }
                 .disabled(viewModel.isLoading)
-                .help("刷新状态")
+                .help(localization.t(.refreshStatus))
             }
             .buttonStyle(.bordered)
         }
         .padding()
     }
 }
-

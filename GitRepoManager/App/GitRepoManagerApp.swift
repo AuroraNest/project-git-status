@@ -4,29 +4,34 @@ import AppKit
 @main
 struct GitRepoManagerApp: App {
     @StateObject private var mainViewModel = MainViewModel()
+    @StateObject private var localization = AppLocalization.shared
     @StateObject private var statusBarController = StatusBarController()
 
     var body: some Scene {
         WindowGroup(id: "main") {
             MainView()
                 .environmentObject(mainViewModel)
+                .environmentObject(localization)
                 .frame(minWidth: 900, minHeight: 600)
                 .onAppear {
-                    statusBarController.configureIfNeeded(with: mainViewModel)
+                    statusBarController.configure(with: mainViewModel, localization: localization)
+                }
+                .onChange(of: localization.language) { _ in
+                    statusBarController.configure(with: mainViewModel, localization: localization)
                 }
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(after: .newItem) {
-                Button("添加项目...") {
+                Button(localization.t(.addProjectEllipsis)) {
                     mainViewModel.showAddProjectDialog()
                 }
                 .keyboardShortcut("o", modifiers: [.command, .shift])
 
                 Divider()
 
-                Button("刷新所有仓库") {
+                Button(localization.t(.refreshAllRepositories)) {
                     Task {
                         await mainViewModel.refreshAll()
                     }
@@ -41,18 +46,24 @@ final class StatusBarController: ObservableObject {
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()
 
-    func configureIfNeeded(with viewModel: MainViewModel) {
-        guard statusItem == nil else { return }
-
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let button = item.button {
-            button.image = NSImage(systemSymbolName: "externaldrive.badge.checkmark", accessibilityDescription: "Git 状态")
-            button.imagePosition = .imageOnly
-            button.toolTip = "Git 仓库状态"
-            button.target = self
-            button.action = #selector(togglePopover(_:))
+    func configure(with viewModel: MainViewModel, localization: AppLocalization) {
+        if statusItem == nil {
+            let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+            if let button = item.button {
+                button.imagePosition = .imageOnly
+                button.target = self
+                button.action = #selector(togglePopover(_:))
+            }
+            statusItem = item
         }
-        statusItem = item
+
+        if let button = statusItem?.button {
+            button.image = NSImage(
+                systemSymbolName: "externaldrive.badge.checkmark",
+                accessibilityDescription: localization.t(.gitStatus)
+            )
+            button.toolTip = localization.t(.gitStatus)
+        }
 
         popover.behavior = .transient  // 点击其他区域自动收起
         popover.animates = true
@@ -67,6 +78,7 @@ final class StatusBarController: ObservableObject {
                 }
             )
             .environmentObject(viewModel)
+            .environmentObject(localization)
         )
     }
 
@@ -91,12 +103,12 @@ final class StatusBarController: ObservableObject {
 
 struct MenuBarPanelView: View {
     @EnvironmentObject var viewModel: MainViewModel
+    @EnvironmentObject var localization: AppLocalization
     let openMainWindow: () -> Void
     let closePanel: () -> Void
 
     @State private var selectedRepositoryId: UUID?
     @State private var commitMessage: String = ""
-    @AppStorage("menuBarChangeTipsVisible") private var changeTipsVisible = true
     @AppStorage("menuBarChangeTipsCollapsed") private var changeTipsCollapsed = false
 
     private var defaultProject: Project? {
@@ -132,7 +144,7 @@ struct MenuBarPanelView: View {
 
     private var modifiedDirectorySummaries: [(directory: String, count: Int)] {
         let grouped = Dictionary(grouping: changedTrackedFiles) { file in
-            file.directoryPath.isEmpty ? "仓库根目录" : file.directoryPath
+            file.directoryPath.isEmpty ? localization.t(.repositoryRootDirectory) : file.directoryPath
         }
         return grouped
             .map { (directory: $0.key, count: $0.value.count) }
@@ -151,10 +163,10 @@ struct MenuBarPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Git 快捷面板", systemImage: "bolt.circle")
+                Label(localization.t(.gitQuickPanel), systemImage: "bolt.circle")
                     .font(.headline)
                 Spacer()
-                Button("收起") {
+                Button(localization.t(.closePanel)) {
                     closePanel()
                 }
                 .buttonStyle(.bordered)
@@ -162,9 +174,9 @@ struct MenuBarPanelView: View {
 
             if viewModel.projects.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("还没有添加项目")
+                    Text(localization.t(.noProjectsYet))
                         .foregroundColor(.secondary)
-                    Button("打开主窗口添加项目") {
+                    Button(localization.t(.openMainWindowToAddProject)) {
                         openMainWindow()
                         viewModel.showAddProjectDialog()
                     }
@@ -172,10 +184,10 @@ struct MenuBarPanelView: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("默认项目")
+                    Text(localization.t(.defaultProject))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    Picker("默认项目", selection: defaultProjectBinding) {
+                    Picker(localization.t(.defaultProject), selection: defaultProjectBinding) {
                         ForEach(viewModel.projects) { project in
                             Text(project.name).tag(Optional(project.id))
                         }
@@ -184,17 +196,17 @@ struct MenuBarPanelView: View {
                 }
 
                 if repositories.isEmpty {
-                    Text("默认项目下没有仓库")
+                    Text(localization.t(.noRepositoriesUnderDefaultProject))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("目标仓库（仅显示有修改）")
+                        Text(localization.t(.targetRepositoryOnlyChanged))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
 
                         if repositoriesWithChanges.isEmpty {
-                            Text("当前没有有修改的仓库，先点“刷新”")
+                            Text(localization.t(.noChangedRepositoriesRefreshFirst))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         } else {
@@ -226,7 +238,7 @@ struct MenuBarPanelView: View {
                     }
 
                     HStack(spacing: 8) {
-                        Button("查看详情") {
+                        Button(localization.t(.viewDetails)) {
                             if let selectedRepository {
                                 viewModel.setSelectedRepository(selectedRepository.id)
                             }
@@ -234,7 +246,7 @@ struct MenuBarPanelView: View {
                         }
                         .buttonStyle(.bordered)
 
-                        Button("刷新") {
+                        Button(localization.t(.refresh)) {
                             guard let selectedRepository else { return }
                             Task {
                                 await viewModel.refreshRepository(selectedRepository)
@@ -242,13 +254,13 @@ struct MenuBarPanelView: View {
                         }
                         .buttonStyle(.bordered)
 
-                        Button("Finder") {
+                        Button(localization.t(.finder)) {
                             guard let selectedRepository else { return }
                             viewModel.openInFinder(selectedRepository)
                         }
                         .buttonStyle(.bordered)
 
-                        Button("终端") {
+                        Button(localization.t(.terminal)) {
                             guard let selectedRepository else { return }
                             viewModel.openInTerminal(selectedRepository)
                         }
@@ -258,54 +270,36 @@ struct MenuBarPanelView: View {
                     if let status = selectedRepository?.status {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
-                                Text("变更提示")
+                                Text(localization.t(.changeTips))
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                 Spacer()
 
-                                if changeTipsVisible {
-                                    Button(changeTipsCollapsed ? "展开" : "收起") {
-                                        withAnimation(.easeInOut(duration: 0.15)) {
-                                            changeTipsCollapsed.toggle()
-                                        }
+                                Button(changeTipsCollapsed ? localization.t(.expand) : localization.t(.collapse)) {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        changeTipsCollapsed.toggle()
                                     }
-                                    .buttonStyle(.borderless)
-                                    .font(.caption)
-
-                                    Button("隐藏") {
-                                        withAnimation(.easeInOut(duration: 0.15)) {
-                                            changeTipsVisible = false
-                                        }
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .font(.caption)
-                                } else {
-                                    Button("显示") {
-                                        withAnimation(.easeInOut(duration: 0.15)) {
-                                            changeTipsVisible = true
-                                        }
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .font(.caption)
                                 }
+                                .buttonStyle(.borderless)
+                                .font(.caption)
                             }
 
-                            if changeTipsVisible && !changeTipsCollapsed {
+                            if !changeTipsCollapsed {
                                 HStack(spacing: 8) {
-                                    Label("已暂存 \(status.stagedFiles.count)", systemImage: "checkmark.circle")
-                                    Label("已修改 \(status.modifiedFiles.count)", systemImage: "pencil.circle")
-                                    Label("未跟踪 \(status.untrackedFiles.count)", systemImage: "questionmark.circle")
+                                    Label("\(localization.t(.staged)) \(status.stagedFiles.count)", systemImage: "checkmark.circle")
+                                    Label("\(localization.t(.modified)) \(status.modifiedFiles.count)", systemImage: "pencil.circle")
+                                    Label("\(localization.t(.untracked)) \(status.untrackedFiles.count)", systemImage: "questionmark.circle")
                                 }
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
                                 if modifiedDirectorySummaries.isEmpty {
-                                    Text("当前没有已修改目录")
+                                    Text(localization.t(.noModifiedDirectories))
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 } else {
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text("已修改目录：")
+                                        Text(localization.t(.modifiedDirectories))
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                         ForEach(Array(modifiedDirectorySummaries.prefix(3)), id: \.directory) { item in
@@ -325,7 +319,7 @@ struct MenuBarPanelView: View {
 
                                 if !changedFilePreviews.isEmpty {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("文件预览：")
+                                        Text(localization.t(.filePreview))
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                         ForEach(changedFilePreviews, id: \.self) { path in
@@ -342,17 +336,17 @@ struct MenuBarPanelView: View {
                         .background(Color.secondary.opacity(0.08))
                         .cornerRadius(10)
                     } else {
-                        Text("暂无状态数据，点“刷新”即可看到变更目录")
+                        Text(localization.t(.noStatusDataRefreshToSeeChangedDirectories))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("提交日志（仅提交并推送已修改文件）")
+                        Text(localization.t(.commitLogModifiedOnly))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
 
-                        TextField("输入提交日志...", text: $commitMessage)
+                        TextField(localization.t(.enterCommitLog), text: $commitMessage)
                             .textFieldStyle(.roundedBorder)
 
                         Button {
@@ -367,7 +361,7 @@ struct MenuBarPanelView: View {
                                 }
                             }
                         } label: {
-                            Label("提交并推送已修改", systemImage: "paperplane.fill")
+                            Label(localization.t(.quickCommitPushModified), systemImage: "paperplane.fill")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)

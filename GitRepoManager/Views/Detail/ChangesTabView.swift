@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ChangesTabView: View {
+    @EnvironmentObject var localization: AppLocalization
     @ObservedObject var viewModel: RepositoryViewModel
     @State private var selectedFiles: Set<GitFile> = []
     @State private var commitMessage: String = ""
@@ -59,14 +60,14 @@ struct ChangesTabView: View {
                         Button {
                             Task { await viewModel.stageAll() }
                         } label: {
-                            Label("暂存全部", systemImage: "plus.circle")
+                            Label(localization.t(.stageAll), systemImage: "plus.circle")
                         }
                         .disabled(viewModel.unstageableFiles.isEmpty || viewModel.isOperating)
 
                         Button {
                             Task { await viewModel.stageModifiedOnly() }
                         } label: {
-                            Label("暂存已修改", systemImage: "checkmark.circle")
+                            Label(localization.t(.stageModifiedOnly), systemImage: "checkmark.circle")
                         }
                         .disabled(modifiedFiles.isEmpty || viewModel.isOperating)
 
@@ -76,7 +77,7 @@ struct ChangesTabView: View {
                                 await viewModel.stageFiles(filesToStage)
                             }
                         } label: {
-                            Label("暂存选中", systemImage: "plus")
+                            Label(localization.t(.stageSelected), systemImage: "plus")
                         }
                         .disabled(selectedFiles.filter { !$0.isStaged }.isEmpty || viewModel.isOperating)
 
@@ -85,7 +86,7 @@ struct ChangesTabView: View {
                         Button {
                             Task { await viewModel.unstageAll() }
                         } label: {
-                            Label("取消全部", systemImage: "minus.circle")
+                            Label(localization.t(.unstageAll), systemImage: "minus.circle")
                         }
                         .disabled(stagedFiles.isEmpty || viewModel.isOperating)
                     }
@@ -93,12 +94,12 @@ struct ChangesTabView: View {
 
                     // 提交区域
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("提交信息")
+                        Text(localization.t(.commitMessage))
                             .font(.headline)
 
                         ZStack(alignment: .topLeading) {
                             if commitMessage.isEmpty {
-                                Text("输入提交信息...")
+                                Text(localization.t(.enterCommitMessage))
                                     .font(.system(.body, design: .monospaced))
                                     .foregroundColor(.secondary)
                                     .padding(.leading, 9)
@@ -128,7 +129,7 @@ struct ChangesTabView: View {
                             } label: {
                                 HStack {
                                     Image(systemName: "checkmark.circle.fill")
-                                    Text("提交")
+                                    Text(localization.t(.commit))
                                 }
                                 .frame(maxWidth: .infinity)
                             }
@@ -149,7 +150,7 @@ struct ChangesTabView: View {
                             } label: {
                                 HStack {
                                     Image(systemName: "paperplane.fill")
-                                    Text("提交并推送")
+                                    Text(localization.t(.commitAndPush))
                                 }
                                 .frame(maxWidth: .infinity)
                             }
@@ -174,7 +175,7 @@ struct ChangesTabView: View {
                     Image(systemName: "doc.text.magnifyingglass")
                         .font(.system(size: 48))
                         .foregroundColor(.secondary)
-                    Text("选择文件查看差异")
+                    Text(localization.t(.selectFileToViewDiff))
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

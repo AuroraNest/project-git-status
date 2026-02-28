@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProjectRowView: View {
     let project: Project
+    @EnvironmentObject var localization: AppLocalization
 
     var totalChanges: Int {
         project.repositories.reduce(0) { sum, repo in
@@ -38,7 +39,7 @@ struct ProjectRowView: View {
                 }
             }
 
-            Text("\(project.repositories.count) 个仓库")
+            Text(localization.repositoriesCount(project.repositories.count))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.leading, 24)

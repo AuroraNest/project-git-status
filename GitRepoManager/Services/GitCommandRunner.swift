@@ -21,19 +21,20 @@ enum GitError: LocalizedError {
     case unknownError(String)
 
     var errorDescription: String? {
+        let l10n = AppLocalization.shared
         switch self {
         case .commandFailed(let message):
-            return "Git 命令执行失败: \(message)"
+            return l10n.gitCommandFailed(message)
         case .notAGitRepository:
-            return "当前目录不是 Git 仓库"
+            return l10n.t(.notAGitRepository)
         case .mergeConflict:
-            return "存在合并冲突，请先解决冲突"
+            return l10n.t(.mergeConflict)
         case .detachedHead:
-            return "当前处于分离头指针状态"
+            return l10n.t(.detachedHead)
         case .networkError(let message):
-            return "网络错误: \(message)"
+            return l10n.networkError(message)
         case .unknownError(let message):
-            return "未知错误: \(message)"
+            return l10n.unknownError(message)
         }
     }
 }
@@ -99,7 +100,7 @@ actor GitCommandRunner {
                     process.terminate()
                     outputHandle.readabilityHandler = nil
                     errorHandle.readabilityHandler = nil
-                    throw GitError.commandFailed("命令超时")
+                    throw GitError.commandFailed(AppLocalization.shared.t(.commandTimeout))
                 }
                 try await Task.sleep(nanoseconds: 50_000_000) // 50ms
             }

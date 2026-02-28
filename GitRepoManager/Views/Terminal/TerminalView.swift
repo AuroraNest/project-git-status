@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct TerminalView: View {
+    @EnvironmentObject var localization: AppLocalization
     let repositoryPath: String
     @StateObject private var viewModel: TerminalViewModel
     @State private var commandInput: String = ""
@@ -44,7 +45,7 @@ struct TerminalView: View {
                     .foregroundColor(.accentColor)
                     .fontWeight(.bold)
 
-                TextField("输入 git 命令...", text: $commandInput)
+                TextField(localization.t(.inputGitCommand), text: $commandInput)
                     .textFieldStyle(.plain)
                     .font(.system(.body, design: .monospaced))
                     .focused($isInputFocused)
@@ -70,7 +71,7 @@ struct TerminalView: View {
                 } label: {
                     Image(systemName: "trash")
                 }
-                .help("清空输出")
+                .help(localization.t(.clearOutput))
             }
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
@@ -111,4 +112,3 @@ struct TerminalLineView: View {
         .textSelection(.enabled)
     }
 }
-

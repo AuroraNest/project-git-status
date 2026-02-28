@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AddProjectSheet: View {
     @EnvironmentObject var viewModel: MainViewModel
+    @EnvironmentObject var localization: AppLocalization
     @Environment(\.dismiss) private var dismiss
     @State private var selectedPath: String = ""
     @State private var isSelecting = false
@@ -9,12 +10,12 @@ struct AddProjectSheet: View {
     var body: some View {
         VStack(spacing: 20) {
             // 标题
-            Text("添加项目")
+            Text(localization.t(.addProjectTitle))
                 .font(.title2)
                 .fontWeight(.semibold)
 
             // 说明
-            Text("选择项目根目录，应用会自动扫描其中的 Git 仓库")
+            Text(localization.t(.chooseProjectRootDirectory))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -25,7 +26,7 @@ struct AddProjectSheet: View {
                     .foregroundColor(.accentColor)
 
                 if selectedPath.isEmpty {
-                    Text("未选择目录")
+                    Text(localization.t(.noDirectorySelected))
                         .foregroundColor(.secondary)
                 } else {
                     Text(selectedPath)
@@ -35,7 +36,7 @@ struct AddProjectSheet: View {
 
                 Spacer()
 
-                Button("选择...") {
+                Button("\(localization.t(.choose))...") {
                     selectFolder()
                 }
             }
@@ -45,14 +46,14 @@ struct AddProjectSheet: View {
 
             // 按钮
             HStack {
-                Button("取消") {
+                Button(localization.t(.cancel)) {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
 
                 Spacer()
 
-                Button("添加") {
+                Button(localization.t(.addProject)) {
                     Task {
                         await viewModel.addProject(at: selectedPath)
                         dismiss()
@@ -75,8 +76,8 @@ struct AddProjectSheet: View {
 
     private func selectFolder() {
         let panel = NSOpenPanel()
-        panel.title = "选择项目目录"
-        panel.message = "选择包含 Git 仓库的项目目录"
+        panel.title = localization.t(.chooseProjectDirectory)
+        panel.message = localization.t(.chooseDirectoryContainingGitRepos)
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
@@ -89,4 +90,3 @@ struct AddProjectSheet: View {
         }
     }
 }
-

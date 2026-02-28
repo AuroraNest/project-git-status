@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct BranchesTabView: View {
+    @EnvironmentObject var localization: AppLocalization
     @ObservedObject var viewModel: RepositoryViewModel
     @State private var showNewBranchSheet = false
     @State private var showMergeBranchSheet = false
@@ -13,13 +14,13 @@ struct BranchesTabView: View {
                 Button {
                     showNewBranchSheet = true
                 } label: {
-                    Label("新建分支", systemImage: "plus.circle")
+                    Label(localization.t(.newBranch), systemImage: "plus.circle")
                 }
 
                 Button {
                     showMergeBranchSheet = true
                 } label: {
-                    Label("合并分支", systemImage: "arrow.triangle.merge")
+                    Label(localization.t(.mergeBranch), systemImage: "arrow.triangle.merge")
                 }
                 .disabled(viewModel.localBranches.count < 2)
 
@@ -28,7 +29,7 @@ struct BranchesTabView: View {
                 Button {
                     Task { await viewModel.fetchBranches() }
                 } label: {
-                    Label("获取远程", systemImage: "arrow.down.circle")
+                    Label(localization.t(.fetchRemote), systemImage: "arrow.down.circle")
                 }
                 .disabled(viewModel.isLoading)
             }
@@ -40,7 +41,7 @@ struct BranchesTabView: View {
             // 分支列表
             List {
                 // 本地分支
-                Section("本地分支") {
+                Section(localization.t(.localBranches)) {
                     ForEach(viewModel.localBranches) { branch in
                         BranchRowView(branch: branch) {
                             Task { await viewModel.checkoutBranch(branch) }
@@ -50,7 +51,7 @@ struct BranchesTabView: View {
 
                 // 远程分支
                 if !viewModel.remoteBranches.isEmpty {
-                    Section("远程分支") {
+                    Section(localization.t(.remoteBranches)) {
                         ForEach(viewModel.remoteBranches) { branch in
                             BranchRowView(branch: branch, isRemote: true) {
                                 Task { await viewModel.checkoutRemoteBranch(branch) }
@@ -66,7 +67,7 @@ struct BranchesTabView: View {
                     Image(systemName: "arrow.triangle.branch")
                         .font(.system(size: 48))
                         .foregroundColor(.secondary)
-                    Text("没有找到分支")
+                    Text(localization.t(.noBranchesFound))
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -101,6 +102,7 @@ struct BranchesTabView: View {
 }
 
 struct BranchRowView: View {
+    @EnvironmentObject var localization: AppLocalization
     let branch: GitBranch
     var isRemote: Bool = false
     let onCheckout: () -> Void
@@ -120,7 +122,7 @@ struct BranchRowView: View {
                     .fontWeight(branch.isCurrent ? .semibold : .regular)
 
                 if let tracking = branch.trackingBranch {
-                    Text("跟踪: \(tracking)")
+                    Text(localization.trackingBranch(tracking))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -129,13 +131,13 @@ struct BranchRowView: View {
             Spacer()
 
             if !branch.isCurrent {
-                Button(isRemote ? "检出" : "切换") {
+                Button(isRemote ? localization.t(.checkout) : localization.t(.switchBranch)) {
                     onCheckout()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             } else {
-                Text("当前")
+                Text(localization.t(.current))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -145,28 +147,29 @@ struct BranchRowView: View {
 }
 
 struct NewBranchSheet: View {
+    @EnvironmentObject var localization: AppLocalization
     @Binding var branchName: String
     let onCreate: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("新建分支")
+            Text(localization.t(.newBranch))
                 .font(.title2)
                 .fontWeight(.semibold)
 
-            TextField("分支名称", text: $branchName)
+            TextField(localization.t(.branchName), text: $branchName)
                 .textFieldStyle(.roundedBorder)
 
             HStack {
-                Button("取消") {
+                Button(localization.t(.cancel)) {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
 
                 Spacer()
 
-                Button("创建") {
+                Button(localization.t(.create)) {
                     onCreate()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -180,6 +183,7 @@ struct NewBranchSheet: View {
 }
 
 struct MergeBranchSheet: View {
+    @EnvironmentObject var localization: AppLocalization
     let branches: [GitBranch]
     let currentBranch: String
     let onMerge: (GitBranch) -> Void
@@ -192,16 +196,16 @@ struct MergeBranchSheet: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("合并分支")
+            Text(localization.t(.mergeBranch))
                 .font(.title2)
                 .fontWeight(.semibold)
 
-            Text("将选择的分支合并到 \(currentBranch)")
+            Text(localization.mergeSelectedBranchInto(currentBranch))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 
-            Picker("选择分支", selection: $selectedBranch) {
-                Text("请选择...").tag(nil as GitBranch?)
+            Picker(localization.t(.selectBranch), selection: $selectedBranch) {
+                Text(localization.t(.pleaseChoose)).tag(nil as GitBranch?)
                 ForEach(availableBranches) { branch in
                     Text(branch.name).tag(branch as GitBranch?)
                 }
@@ -209,14 +213,14 @@ struct MergeBranchSheet: View {
             .pickerStyle(.menu)
 
             HStack {
-                Button("取消") {
+                Button(localization.t(.cancel)) {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
 
                 Spacer()
 
-                Button("合并") {
+                Button(localization.t(.merge)) {
                     if let branch = selectedBranch {
                         onMerge(branch)
                     }
@@ -230,4 +234,3 @@ struct MergeBranchSheet: View {
         .frame(width: 350)
     }
 }
-

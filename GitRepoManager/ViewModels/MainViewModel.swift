@@ -15,6 +15,7 @@ class MainViewModel: ObservableObject {
     private let persistence = PersistenceService.shared
     private let scanner = ProjectScanner()
     private let gitService = GitService()
+    private let l10n = AppLocalization.shared
 
     private var refreshingRepositoryIDs: Set<UUID> = []
     private var isRefreshingAll = false
@@ -85,7 +86,7 @@ class MainViewModel: ObservableObject {
                 await refreshRepository(repo)
             }
         } catch {
-            showError("扫描仓库失败: \(error.localizedDescription)")
+            showError(l10n.scanRepositoriesFailed(error.localizedDescription))
         }
     }
 
@@ -146,17 +147,17 @@ class MainViewModel: ObservableObject {
     func quickCommitAndPushModifiedFiles(repositoryId: UUID, message: String) async -> Bool {
         let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedMessage.isEmpty else {
-            menuBarMessage = "请输入提交日志"
+            menuBarMessage = l10n.t(.enterCommitLogMessage)
             return false
         }
 
         guard let repository = getRepository(byId: repositoryId) else {
-            menuBarMessage = "未找到目标仓库"
+            menuBarMessage = l10n.t(.targetRepositoryNotFound)
             return false
         }
 
         guard refreshingRepositoryIDs.insert(repository.id).inserted else {
-            menuBarMessage = "仓库正在处理中，请稍后重试"
+            menuBarMessage = l10n.t(.repoBusyRetryLater)
             return false
         }
 
@@ -183,7 +184,7 @@ class MainViewModel: ObservableObject {
                     $0.currentBranch = latestStatus.currentBranch
                     $0.lastError = nil
                 }
-                menuBarMessage = "没有可提交的已修改文件"
+                menuBarMessage = l10n.t(.noModifiedFilesToCommit)
                 return false
             }
 
@@ -199,13 +200,13 @@ class MainViewModel: ObservableObject {
                 $0.lastError = nil
             }
 
-            menuBarMessage = "提交并推送成功（\(modifiedPaths.count) 个文件）"
+            menuBarMessage = l10n.quickCommitPushSuccess(modifiedPaths.count)
             return true
         } catch {
             mutateRepository(projectId: repository.parentProjectId, repoId: repository.id) {
                 $0.lastError = error.localizedDescription
             }
-            menuBarMessage = "提交或推送失败"
+            menuBarMessage = l10n.t(.commitOrPushFailed)
             return false
         }
     }

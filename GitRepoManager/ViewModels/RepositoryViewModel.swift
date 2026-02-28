@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import AppKit
 
 @MainActor
 class RepositoryViewModel: ObservableObject {
@@ -13,6 +14,7 @@ class RepositoryViewModel: ObservableObject {
     @Published var operationMessage: String?
 
     private let gitService = GitService()
+    private let l10n = AppLocalization.shared
 
     var localBranches: [GitBranch] {
         branches.filter { !$0.isRemote }
@@ -53,7 +55,7 @@ class RepositoryViewModel: ObservableObject {
         do {
             try await gitService.fetch(in: repository.path)
             branches = try await gitService.getBranches(in: repository.path)
-            operationMessage = "已获取远程更新"
+            operationMessage = l10n.t(.fetchedRemoteUpdates)
         } catch {
             lastError = error.localizedDescription
         }
@@ -68,7 +70,7 @@ class RepositoryViewModel: ObservableObject {
         do {
             try await gitService.stageAll(in: repository.path)
             await loadStatus()
-            operationMessage = "已暂存所有文件"
+            operationMessage = l10n.t(.stagedAllFiles)
         } catch {
             lastError = error.localizedDescription
         }
@@ -83,12 +85,12 @@ class RepositoryViewModel: ObservableObject {
             let modifiedFiles = status?.modifiedFiles ?? []
             let paths = modifiedFiles.map { $0.path }
             guard !paths.isEmpty else {
-                operationMessage = "没有可暂存的已修改文件"
+                operationMessage = l10n.t(.noModifiedFilesToStage)
                 return
             }
             try await gitService.stageFiles(paths, in: repository.path)
             await loadStatus()
-            operationMessage = "已暂存 \(paths.count) 个已修改文件"
+            operationMessage = l10n.stagedModifiedFilesCount(paths.count)
         } catch {
             lastError = error.localizedDescription
         }
@@ -102,7 +104,7 @@ class RepositoryViewModel: ObservableObject {
             let paths = files.map { $0.path }
             try await gitService.stageFiles(paths, in: repository.path)
             await loadStatus()
-            operationMessage = "已暂存 \(files.count) 个文件"
+            operationMessage = l10n.stagedFilesCount(files.count)
         } catch {
             lastError = error.localizedDescription
         }
@@ -115,7 +117,7 @@ class RepositoryViewModel: ObservableObject {
         do {
             try await gitService.unstageAll(in: repository.path)
             await loadStatus()
-            operationMessage = "已取消暂存所有文件"
+            operationMessage = l10n.t(.unstagedAllFiles)
         } catch {
             lastError = error.localizedDescription
         }
@@ -143,7 +145,7 @@ class RepositoryViewModel: ObservableObject {
         do {
             try await gitService.commit(message: message, in: repository.path)
             await loadStatus()
-            operationMessage = "提交成功"
+            operationMessage = l10n.t(.commitSuccess)
         } catch {
             lastError = error.localizedDescription
         }
@@ -158,10 +160,10 @@ class RepositoryViewModel: ObservableObject {
             do {
                 try await gitService.push(in: repository.path)
                 await loadStatus()
-                operationMessage = "提交并推送成功"
+                operationMessage = l10n.t(.commitAndPushSuccess)
             } catch {
                 await loadStatus()
-                operationMessage = "提交成功，但推送失败"
+                operationMessage = l10n.t(.commitSuccessButPushFailed)
                 lastError = error.localizedDescription
             }
         } catch {
@@ -178,7 +180,7 @@ class RepositoryViewModel: ObservableObject {
         do {
             try await gitService.pull(in: repository.path)
             await loadStatus()
-            operationMessage = "拉取成功"
+            operationMessage = l10n.t(.pullSuccess)
         } catch {
             lastError = error.localizedDescription
         }
@@ -191,7 +193,7 @@ class RepositoryViewModel: ObservableObject {
         do {
             try await gitService.push(in: repository.path)
             await loadStatus()
-            operationMessage = "推送成功"
+            operationMessage = l10n.t(.pushSuccess)
         } catch {
             lastError = error.localizedDescription
         }
@@ -206,7 +208,7 @@ class RepositoryViewModel: ObservableObject {
         do {
             try await gitService.checkout(branch: branch.name, in: repository.path)
             await loadStatus()
-            operationMessage = "已切换到分支: \(branch.name)"
+            operationMessage = l10n.switchedToBranch(branch.name)
         } catch {
             lastError = error.localizedDescription
         }
@@ -220,7 +222,7 @@ class RepositoryViewModel: ObservableObject {
             let localName = branch.name.replacingOccurrences(of: "origin/", with: "")
             try await gitService.createBranch(name: localName, in: repository.path)
             await loadStatus()
-            operationMessage = "已创建并切换到分支: \(localName)"
+            operationMessage = l10n.createdAndSwitchedToBranch(localName)
         } catch {
             lastError = error.localizedDescription
         }
@@ -233,7 +235,7 @@ class RepositoryViewModel: ObservableObject {
         do {
             try await gitService.createBranch(name: name, in: repository.path)
             await loadStatus()
-            operationMessage = "已创建分支: \(name)"
+            operationMessage = l10n.createdBranch(name)
         } catch {
             lastError = error.localizedDescription
         }
@@ -246,7 +248,7 @@ class RepositoryViewModel: ObservableObject {
         do {
             try await gitService.merge(branch: branch.name, in: repository.path)
             await loadStatus()
-            operationMessage = "已合并分支: \(branch.name)"
+            operationMessage = l10n.mergedBranch(branch.name)
         } catch {
             lastError = error.localizedDescription
         }
@@ -258,7 +260,73 @@ class RepositoryViewModel: ObservableObject {
         do {
             return try await gitService.getDiff(for: file, in: repository.path)
         } catch {
-            return "无法获取差异: \(error.localizedDescription)"
+            return l10n.unableToGetDiff(error.localizedDescription)
+        }
+    }
+
+    func discardChanges(for file: GitFile) async {
+        isOperating = true
+        defer { isOperating = false }
+
+        do {
+            try await gitService.discardChanges([file.path], in: repository.path)
+            await loadStatus()
+            operationMessage = l10n.t(.discardedChanges)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func addToGitignore(path: String) async {
+        isOperating = true
+        defer { isOperating = false }
+
+        do {
+            let gitignoreURL = URL(fileURLWithPath: repository.path).appendingPathComponent(".gitignore")
+            let normalizedLine = path.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !normalizedLine.isEmpty else { return }
+
+            var existing = (try? String(contentsOf: gitignoreURL, encoding: .utf8)) ?? ""
+            let lines = Set(existing.split(separator: "\n", omittingEmptySubsequences: false).map { String($0) })
+            guard !lines.contains(normalizedLine) else { return }
+
+            if !existing.isEmpty && !existing.hasSuffix("\n") {
+                existing.append("\n")
+            }
+            existing.append(normalizedLine)
+            existing.append("\n")
+            try existing.write(to: gitignoreURL, atomically: true, encoding: .utf8)
+
+            await loadStatus()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func openFileAtHEAD(_ file: GitFile) {
+        let headPath: String
+        if file.status == .renamed, let oldPath = file.oldPath, !oldPath.isEmpty {
+            headPath = oldPath
+        } else {
+            headPath = file.path
+        }
+
+        Task {
+            do {
+                let content = try await gitService.showFileAtHEAD(path: headPath, in: repository.path)
+                let tempDir = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("gitrepomanager-head-files", isDirectory: true)
+                try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+                let baseName = URL(fileURLWithPath: file.fileName).deletingPathExtension().lastPathComponent
+                let ext = URL(fileURLWithPath: file.fileName).pathExtension
+                let fileName = ext.isEmpty ? "\(baseName)-HEAD" : "\(baseName)-HEAD.\(ext)"
+                let outURL = tempDir.appendingPathComponent(fileName)
+                try content.write(to: outURL, atomically: true, encoding: .utf8)
+                NSWorkspace.shared.open(outURL)
+            } catch {
+                lastError = error.localizedDescription
+            }
         }
     }
 

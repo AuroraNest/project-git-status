@@ -10,6 +10,7 @@ class PersistenceService {
 
     private struct AppSettings: Codable {
         var defaultProjectId: UUID?
+        var language: AppLanguage?
     }
 
     private var configDirectoryURL: URL {
@@ -99,7 +100,8 @@ class PersistenceService {
             ensureConfigDirectoryExists()
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
-            let settings = AppSettings(defaultProjectId: projectId)
+            var settings = loadSettings()
+            settings.defaultProjectId = projectId
             let data = try encoder.encode(settings)
             try data.write(to: settingsFileURL, options: .atomic)
         } catch {
@@ -108,16 +110,37 @@ class PersistenceService {
     }
 
     func loadDefaultProjectId() -> UUID? {
+        loadSettings().defaultProjectId
+    }
+
+    func saveLanguage(_ language: AppLanguage) {
+        do {
+            ensureConfigDirectoryExists()
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            var settings = loadSettings()
+            settings.language = language
+            let data = try encoder.encode(settings)
+            try data.write(to: settingsFileURL, options: .atomic)
+        } catch {
+            print("保存语言设置失败: \(error)")
+        }
+    }
+
+    func loadLanguage() -> AppLanguage? {
+        loadSettings().language
+    }
+
+    private func loadSettings() -> AppSettings {
         guard let data = try? Data(contentsOf: settingsFileURL) else {
-            return nil
+            return AppSettings(defaultProjectId: nil, language: nil)
         }
 
         do {
-            let settings = try JSONDecoder().decode(AppSettings.self, from: data)
-            return settings.defaultProjectId
+            return try JSONDecoder().decode(AppSettings.self, from: data)
         } catch {
-            print("读取默认项目失败: \(error)")
-            return nil
+            print("读取设置失败: \(error)")
+            return AppSettings(defaultProjectId: nil, language: nil)
         }
     }
 }

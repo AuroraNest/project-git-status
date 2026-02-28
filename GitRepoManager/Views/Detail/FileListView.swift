@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FileListView: View {
+    @EnvironmentObject var localization: AppLocalization
     let stagedFiles: [GitFile]
     let modifiedFiles: [GitFile]
     let untrackedFiles: [GitFile]
@@ -19,7 +20,7 @@ struct FileListView: View {
                 Image(systemName: "checkmark.circle")
                     .font(.system(size: 48))
                     .foregroundColor(.green)
-                Text("没有文件变更")
+                Text(localization.t(.noFileChanges))
                     .font(.headline)
                     .foregroundColor(.secondary)
             }
@@ -42,7 +43,7 @@ struct FileListView: View {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
-                            Text("已暂存")
+                            Text(localization.t(.staged))
                             Spacer()
                             Text("\(stagedFiles.count)")
                                 .foregroundColor(.secondary)
@@ -66,9 +67,9 @@ struct FileListView: View {
                         HStack {
                             Image(systemName: "pencil.circle.fill")
                                 .foregroundColor(.orange)
-                            Text("已修改")
+                            Text(localization.t(.modified))
                             Spacer()
-                            Button(allModifiedSelected ? "取消全选" : "全选") {
+                            Button(allModifiedSelected ? localization.t(.deselectAll) : localization.t(.selectAll)) {
                                 onToggleSelectAllModified()
                             }
                             .buttonStyle(.plain)
@@ -96,7 +97,7 @@ struct FileListView: View {
                         HStack {
                             Image(systemName: "questionmark.circle.fill")
                                 .foregroundColor(.gray)
-                            Text("未跟踪")
+                            Text(localization.t(.untracked))
                             Spacer()
                             Text("\(untrackedFiles.count)")
                                 .foregroundColor(.secondary)
