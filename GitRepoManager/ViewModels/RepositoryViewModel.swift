@@ -332,7 +332,7 @@ class RepositoryViewModel: ObservableObject {
 
         do {
             let gitignoreURL = URL(fileURLWithPath: repository.path).appendingPathComponent(".gitignore")
-            let normalizedLine = path.trimmingCharacters(in: .whitespacesAndNewlines)
+            let normalizedLine = gitignorePattern(for: path)
             guard !normalizedLine.isEmpty else { return }
 
             var existing = (try? String(contentsOf: gitignoreURL, encoding: .utf8)) ?? ""
@@ -350,6 +350,18 @@ class RepositoryViewModel: ObservableObject {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    private func gitignorePattern(for path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+
+        let fileName = URL(fileURLWithPath: trimmed).lastPathComponent
+        if fileName == ".DS_Store" {
+            return ".DS_Store"
+        }
+
+        return trimmed
     }
 
     func openFileAtHEAD(_ file: GitFile) {

@@ -286,6 +286,23 @@ final class AppLocalization: ObservableObject {
         }
     }
 
+    func gitCommandTimedOut(command: String, timeoutSeconds: Int, directory: String) -> String {
+        switch language {
+        case .chinese:
+            return """
+            命令超时（\(timeoutSeconds) 秒）
+            命令: \(command)
+            目录: \(directory)
+            """
+        case .english:
+            return """
+            Command timed out (\(timeoutSeconds)s)
+            Command: \(command)
+            Directory: \(directory)
+            """
+        }
+    }
+
     func networkError(_ message: String) -> String {
         switch language {
         case .chinese:

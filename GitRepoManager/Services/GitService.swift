@@ -19,7 +19,7 @@ actor GitService {
         // 避免单独调用 `rev-parse HEAD` / `rev-list @{upstream}...HEAD` 的脆弱性。
         let statusOutput = try await runner.execute(
             // `normal` 会把大目录折叠为 `dir/`，性能比 `all` 更好，避免频繁“转圈”
-            ["status", "--porcelain=v2", "--branch", "--untracked-files=normal"],
+            ["-c", "core.quotepath=false", "status", "--porcelain=v2", "--branch", "--untracked-files=normal"],
             in: directory,
             timeout: 10.0
         )
@@ -100,7 +100,7 @@ actor GitService {
                 guard parts.count >= 9 else { continue }
 
                 let xy = parts[1]
-                let path = parts[8...].joined(separator: " ")
+                let path = decodeGitPath(parts[8...].joined(separator: " "))
 
                 let indexStatus = String(xy.prefix(1))
                 let workStatus = String(xy.suffix(1))
@@ -133,12 +133,12 @@ actor GitService {
                 let newPath: String
                 let oldPath: String?
                 if let tabIndex = pathPart.firstIndex(of: "\t") {
-                    newPath = String(pathPart[..<tabIndex])
+                    newPath = decodeGitPath(String(pathPart[..<tabIndex]))
                     let after = pathPart.index(after: tabIndex)
-                    let old = String(pathPart[after...])
+                    let old = decodeGitPath(String(pathPart[after...]))
                     oldPath = old.isEmpty ? nil : old
                 } else {
-                    newPath = pathPart
+                    newPath = decodeGitPath(pathPart)
                     oldPath = nil
                 }
 
@@ -164,7 +164,7 @@ actor GitService {
                 }
             } else if line.hasPrefix("? ") {
                 // 未跟踪文件
-                let path = String(line.dropFirst(2))
+                let path = decodeGitPath(String(line.dropFirst(2)))
                 files.append(GitFile(
                     path: path,
                     status: .untracked,
@@ -200,13 +200,88 @@ actor GitService {
         }
     }
 
+    private func decodeGitPath(_ rawPath: String) -> String {
+        let trimmed = rawPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.first == "\"", trimmed.last == "\"", trimmed.count >= 2 else {
+            return trimmed
+        }
+
+        let inner = trimmed.dropFirst().dropLast()
+        var data = Data()
+        var index = inner.startIndex
+
+        while index < inner.endIndex {
+            let character = inner[index]
+
+            if character == "\\" {
+                let nextIndex = inner.index(after: index)
+                guard nextIndex < inner.endIndex else {
+                    data.append(contentsOf: String(character).utf8)
+                    break
+                }
+
+                let escaped = inner[nextIndex]
+                switch escaped {
+                case "\\":
+                    data.append(UInt8(ascii: "\\"))
+                    index = inner.index(after: nextIndex)
+                case "\"":
+                    data.append(UInt8(ascii: "\""))
+                    index = inner.index(after: nextIndex)
+                case "t":
+                    data.append(0x09)
+                    index = inner.index(after: nextIndex)
+                case "n":
+                    data.append(0x0A)
+                    index = inner.index(after: nextIndex)
+                case "r":
+                    data.append(0x0D)
+                    index = inner.index(after: nextIndex)
+                case "0"..."7":
+                    var octal = String(escaped)
+                    var cursor = inner.index(after: nextIndex)
+                    var count = 1
+
+                    while cursor < inner.endIndex, count < 3, isOctalDigit(inner[cursor]) {
+                        octal.append(inner[cursor])
+                        cursor = inner.index(after: cursor)
+                        count += 1
+                    }
+
+                    if let byte = UInt8(octal, radix: 8) {
+                        data.append(byte)
+                    } else {
+                        data.append(contentsOf: "\\\(octal)".utf8)
+                    }
+                    index = cursor
+                default:
+                    data.append(contentsOf: String(escaped).utf8)
+                    index = inner.index(after: nextIndex)
+                }
+            } else {
+                data.append(contentsOf: String(character).utf8)
+                index = inner.index(after: index)
+            }
+        }
+
+        return String(data: data, encoding: .utf8) ?? trimmed
+    }
+
+    private func isOctalDigit(_ character: Character) -> Bool {
+        guard let scalar = character.unicodeScalars.first, character.unicodeScalars.count == 1 else {
+            return false
+        }
+        return scalar.value >= 48 && scalar.value <= 55
+    }
+
     // MARK: - 分支操作
 
     /// 获取所有分支
     func getBranches(in directory: String) async throws -> [GitBranch] {
         let output = try await runner.execute(
             ["branch", "-a", "--format=%(refname:short)|%(upstream:short)|%(HEAD)"],
-            in: directory
+            in: directory,
+            timeout: 15.0
         )
 
         var branches: [GitBranch] = []
@@ -330,7 +405,8 @@ actor GitService {
     func pull(in directory: String) async throws {
         _ = try await runner.execute(
             ["pull"],
-            in: directory
+            in: directory,
+            timeout: 90.0
         )
     }
 
@@ -338,7 +414,8 @@ actor GitService {
     func push(in directory: String) async throws {
         _ = try await runner.execute(
             ["push"],
-            in: directory
+            in: directory,
+            timeout: 90.0
         )
     }
 
@@ -346,7 +423,8 @@ actor GitService {
     func fetch(in directory: String) async throws {
         _ = try await runner.execute(
             ["fetch", "--all"],
-            in: directory
+            in: directory,
+            timeout: 90.0
         )
     }
 

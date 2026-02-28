@@ -48,21 +48,52 @@ actor GitCommandRunner {
         self.gitPath = "/usr/bin/git"
     }
 
+    private func defaultTimeout(for arguments: [String]) -> TimeInterval {
+        guard let command = arguments.first?.lowercased() else {
+            return 15.0
+        }
+
+        switch command {
+        case "push", "pull", "fetch", "clone", "ls-remote", "submodule":
+            return 90.0
+        case "commit", "merge", "checkout", "switch", "restore", "reset":
+            return 30.0
+        case "status", "diff", "show", "branch", "rev-parse", "rev-list", "log":
+            return 15.0
+        default:
+            return 20.0
+        }
+    }
+
+    private func shellEscape(_ value: String) -> String {
+        guard !value.isEmpty else { return "''" }
+        let escaped = value.replacingOccurrences(of: "'", with: "'\\''")
+        return "'\(escaped)'"
+    }
+
+    private func formattedCommand(_ arguments: [String]) -> String {
+        (["git"] + arguments).map(shellEscape).joined(separator: " ")
+    }
+
     /// 执行 Git 命令（带超时）
     func run(
         _ arguments: [String],
         in directory: String,
         environment: [String: String]? = nil,
-        timeout: TimeInterval = 5.0
+        timeout: TimeInterval? = nil
     ) async throws -> CommandResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: gitPath)
         process.arguments = arguments
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
+        let effectiveTimeout = timeout ?? defaultTimeout(for: arguments)
 
         var env = ProcessInfo.processInfo.environment
         env["LC_ALL"] = "en_US.UTF-8"
         env["LANG"] = "en_US.UTF-8"
+        // GUI 场景下无法处理交互式凭证输入，直接禁用，避免 Git 在后台一直挂起。
+        env["GIT_TERMINAL_PROMPT"] = "0"
+        env["GCM_INTERACTIVE"] = "never"
         if let customEnv = environment {
             for (key, value) in customEnv {
                 env[key] = value
@@ -96,11 +127,17 @@ actor GitCommandRunner {
             // 超时处理
             let startTime = Date()
             while process.isRunning {
-                if Date().timeIntervalSince(startTime) > timeout {
+                if Date().timeIntervalSince(startTime) > effectiveTimeout {
                     process.terminate()
                     outputHandle.readabilityHandler = nil
                     errorHandle.readabilityHandler = nil
-                    throw GitError.commandFailed(AppLocalization.shared.t(.commandTimeout))
+                    throw GitError.commandFailed(
+                        AppLocalization.shared.gitCommandTimedOut(
+                            command: formattedCommand(arguments),
+                            timeoutSeconds: Int(effectiveTimeout.rounded()),
+                            directory: directory
+                        )
+                    )
                 }
                 try await Task.sleep(nanoseconds: 50_000_000) // 50ms
             }
@@ -135,7 +172,7 @@ actor GitCommandRunner {
     func execute(
         _ arguments: [String],
         in directory: String,
-        timeout: TimeInterval = 5.0
+        timeout: TimeInterval? = nil
     ) async throws -> String {
         let result = try await run(arguments, in: directory, timeout: timeout)
 
