@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Local assistant/cache
+.claude/
+
+# SwiftPM / Xcode build outputs
+GitRepoManager/.build/
+GitRepoManager/GitRepoManager.app/
+GitRepoManager/release/
+GitRepoManager/DerivedData/
+GitRepoManager/.swiftpm/
+
+# Xcode user-specific files
+GitRepoManager/GitRepoManager.xcodeproj/xcuserdata/
+GitRepoManager/GitRepoManager.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Temp logs
+*.log
