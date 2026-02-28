@@ -1,11 +1,13 @@
 import SwiftUI
+import AppKit
 
 struct FileListView: View {
     @EnvironmentObject var localization: AppLocalization
+    @ObservedObject var viewModel: RepositoryViewModel
     let stagedFiles: [GitFile]
     let modifiedFiles: [GitFile]
     let untrackedFiles: [GitFile]
-    @Binding var selectedFiles: Set<GitFile>
+    @Binding var selectedPaths: Set<String>
     @Binding var selectedFileForDiff: GitFile?
     var allModifiedSelected: Bool = false
     var onToggleSelectAllModified: () -> Void = {}
@@ -34,10 +36,13 @@ struct FileListView: View {
                             FileRowView(
                                 file: file,
                                 isSelected: selectedFileForDiff?.id == file.id,
-                                isChecked: selectedFiles.contains(file),
+                                isChecked: selectedPaths.contains(file.path),
                                 onToggleCheck: { toggleSelection(file) },
                                 onSelect: { selectedFileForDiff = file }
                             )
+                            .contextMenu {
+                                fileContextMenu(file)
+                            }
                         }
                     } header: {
                         HStack {
@@ -58,10 +63,13 @@ struct FileListView: View {
                             FileRowView(
                                 file: file,
                                 isSelected: selectedFileForDiff?.id == file.id,
-                                isChecked: selectedFiles.contains(file),
+                                isChecked: selectedPaths.contains(file.path),
                                 onToggleCheck: { toggleSelection(file) },
                                 onSelect: { selectedFileForDiff = file }
                             )
+                            .contextMenu {
+                                fileContextMenu(file)
+                            }
                         }
                     } header: {
                         HStack {
@@ -88,10 +96,13 @@ struct FileListView: View {
                             FileRowView(
                                 file: file,
                                 isSelected: selectedFileForDiff?.id == file.id,
-                                isChecked: selectedFiles.contains(file),
+                                isChecked: selectedPaths.contains(file.path),
                                 onToggleCheck: { toggleSelection(file) },
                                 onSelect: { selectedFileForDiff = file }
                             )
+                            .contextMenu {
+                                fileContextMenu(file)
+                            }
                         }
                     } header: {
                         HStack {
@@ -110,10 +121,78 @@ struct FileListView: View {
     }
 
     private func toggleSelection(_ file: GitFile) {
-        if selectedFiles.contains(file) {
-            selectedFiles.remove(file)
+        if selectedPaths.contains(file.path) {
+            selectedPaths.remove(file.path)
         } else {
-            selectedFiles.insert(file)
+            selectedPaths.insert(file.path)
+        }
+    }
+
+    @ViewBuilder
+    private func fileContextMenu(_ file: GitFile) -> some View {
+        Button(localization.t(.openChanges)) {
+            selectedFileForDiff = file
+        }
+
+        Divider()
+
+        Button(localization.t(.openFile)) {
+            openWorkingFile(file)
+        }
+        .disabled(file.status == .deleted)
+
+        Button(localization.t(.openFileHead)) {
+            viewModel.openFileAtHEAD(file)
+        }
+        .disabled(file.status == .untracked || file.status == .added)
+
+        Divider()
+
+        if file.isStaged {
+            Button(localization.t(.unstageChanges)) {
+                Task { await viewModel.unstageFiles([file]) }
+            }
+        } else {
+            Button(localization.t(.stageChanges)) {
+                Task { await viewModel.stageFiles([file]) }
+            }
+        }
+
+        Button(localization.t(.discardChanges)) {
+            Task { await viewModel.discardChanges(for: file) }
+        }
+        .disabled(file.status == .untracked || file.status == .added)
+
+        Button(localization.t(.addToGitignore)) {
+            Task { await viewModel.addToGitignore(path: file.path) }
+        }
+
+        Divider()
+
+        Button(localization.t(.showInFinder)) {
+            revealInFinder(file)
+        }
+    }
+
+    private func workingFileURL(for file: GitFile) -> URL {
+        URL(fileURLWithPath: viewModel.repository.path).appendingPathComponent(file.path)
+    }
+
+    private func openWorkingFile(_ file: GitFile) {
+        let url = workingFileURL(for: file)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            viewModel.lastError = localization.fileNotFound(file.path)
+            return
+        }
+        NSWorkspace.shared.open(url)
+    }
+
+    private func revealInFinder(_ file: GitFile) {
+        let url = workingFileURL(for: file)
+        if FileManager.default.fileExists(atPath: url.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        } else {
+            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: viewModel.repository.path)
         }
     }
 }

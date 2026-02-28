@@ -4,54 +4,87 @@ import Foundation
 actor GitService {
     private let runner = GitCommandRunner()
 
+    private struct BranchStatusInfo {
+        let currentBranch: String
+        let aheadCount: Int
+        let behindCount: Int
+    }
+
     // MARK: - 状态查询
 
     /// 获取仓库状态
     func getStatus(in directory: String) async throws -> GitStatus {
-        // 获取当前分支（快速，2秒超时）
-        let branchResult = try await runner.execute(
-            ["rev-parse", "--abbrev-ref", "HEAD"],
-            in: directory,
-            timeout: 2.0
-        )
-        let currentBranch = branchResult.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // 获取领先/落后数（可能慢，2秒超时，失败就跳过）
-        var aheadCount = 0
-        var behindCount = 0
-
-        do {
-            let aheadBehind = try await runner.execute(
-                ["rev-list", "--left-right", "--count", "@{upstream}...HEAD"],
-                in: directory,
-                timeout: 2.0
-            )
-            let parts = aheadBehind.split(separator: "\t")
-            if parts.count >= 2 {
-                behindCount = Int(parts[0]) ?? 0
-                aheadCount = Int(parts[1]) ?? 0
-            }
-        } catch {
-            // 可能没有上游分支或超时，忽略错误
-        }
-
-        // 获取文件状态（可能慢，10秒超时）
+        // 一次性获取分支、ahead/behind 和文件状态。
+        // `--branch` 头信息同时覆盖正常分支、无提交仓库与 detached HEAD 三种场景，
+        // 避免单独调用 `rev-parse HEAD` / `rev-list @{upstream}...HEAD` 的脆弱性。
         let statusOutput = try await runner.execute(
-            ["status", "--porcelain=v2", "--untracked-files=all"],
+            // `normal` 会把大目录折叠为 `dir/`，性能比 `all` 更好，避免频繁“转圈”
+            ["status", "--porcelain=v2", "--branch", "--untracked-files=normal"],
             in: directory,
             timeout: 10.0
         )
 
+        let branchInfo = parseBranchStatusInfo(statusOutput)
         let files = parseStatusOutput(statusOutput)
 
         return GitStatus(
-            currentBranch: currentBranch,
-            aheadCount: aheadCount,
-            behindCount: behindCount,
+            currentBranch: branchInfo.currentBranch,
+            aheadCount: branchInfo.aheadCount,
+            behindCount: branchInfo.behindCount,
             stagedFiles: files.filter { $0.isStaged },
             modifiedFiles: files.filter { !$0.isStaged && $0.status != .untracked },
             untrackedFiles: files.filter { $0.status == .untracked },
             conflictedFiles: files.filter { $0.status == .conflicted }
+        )
+    }
+
+    private func parseBranchStatusInfo(_ output: String) -> BranchStatusInfo {
+        var branchHead = ""
+        var branchOID = ""
+        var aheadCount = 0
+        var behindCount = 0
+
+        for rawLine in output.split(whereSeparator: \.isNewline) {
+            let line = String(rawLine)
+
+            if line.hasPrefix("# branch.head ") {
+                branchHead = String(line.dropFirst("# branch.head ".count))
+            } else if line.hasPrefix("# branch.oid ") {
+                branchOID = String(line.dropFirst("# branch.oid ".count))
+            } else if line.hasPrefix("# branch.ab ") {
+                let counts = line
+                    .dropFirst("# branch.ab ".count)
+                    .split(separator: " ")
+
+                for count in counts {
+                    if count.hasPrefix("+") {
+                        aheadCount = Int(count.dropFirst()) ?? 0
+                    } else if count.hasPrefix("-") {
+                        behindCount = Int(count.dropFirst()) ?? 0
+                    }
+                }
+            }
+        }
+
+        let currentBranch: String
+        if branchHead == "(detached)" {
+            if !branchOID.isEmpty && branchOID != "(initial)" {
+                currentBranch = "detached@\(branchOID.prefix(7))"
+            } else {
+                currentBranch = "HEAD"
+            }
+        } else if !branchHead.isEmpty {
+            currentBranch = branchHead
+        } else if !branchOID.isEmpty && branchOID != "(initial)" {
+            currentBranch = String(branchOID.prefix(7))
+        } else {
+            currentBranch = "HEAD"
+        }
+
+        return BranchStatusInfo(
+            currentBranch: currentBranch,
+            aheadCount: aheadCount,
+            behindCount: behindCount
         )
     }
 
@@ -61,7 +94,7 @@ actor GitService {
         let lines = output.components(separatedBy: "\n")
 
         for line in lines where !line.isEmpty {
-            if line.hasPrefix("1 ") || line.hasPrefix("2 ") {
+            if line.hasPrefix("1 ") {
                 // 普通变更文件 (porcelain v2)
                 let parts = line.components(separatedBy: " ")
                 guard parts.count >= 9 else { continue }
@@ -87,6 +120,46 @@ actor GitService {
                         path: path,
                         status: parseFileStatus(workStatus),
                         isStaged: false
+                    ))
+                }
+            } else if line.hasPrefix("2 ") {
+                // 重命名/复制文件 (porcelain v2)
+                let parts = line.components(separatedBy: " ")
+                guard parts.count >= 10 else { continue }
+
+                let xy = parts[1]
+                let pathPart = parts[9...].joined(separator: " ")
+
+                let newPath: String
+                let oldPath: String?
+                if let tabIndex = pathPart.firstIndex(of: "\t") {
+                    newPath = String(pathPart[..<tabIndex])
+                    let after = pathPart.index(after: tabIndex)
+                    let old = String(pathPart[after...])
+                    oldPath = old.isEmpty ? nil : old
+                } else {
+                    newPath = pathPart
+                    oldPath = nil
+                }
+
+                let indexStatus = String(xy.prefix(1))
+                let workStatus = String(xy.suffix(1))
+
+                if indexStatus != "." {
+                    files.append(GitFile(
+                        path: newPath,
+                        status: parseFileStatus(indexStatus),
+                        isStaged: true,
+                        oldPath: oldPath
+                    ))
+                }
+
+                if workStatus != "." {
+                    files.append(GitFile(
+                        path: newPath,
+                        status: parseFileStatus(workStatus),
+                        isStaged: false,
+                        oldPath: oldPath
                     ))
                 }
             } else if line.hasPrefix("? ") {
@@ -206,7 +279,7 @@ actor GitService {
     func stageFiles(_ paths: [String], in directory: String) async throws {
         guard !paths.isEmpty else { return }
         _ = try await runner.execute(
-            ["add"] + paths,
+            ["add", "-A", "--"] + paths,
             in: directory
         )
     }
@@ -235,6 +308,18 @@ actor GitService {
     func commit(message: String, in directory: String) async throws {
         _ = try await runner.execute(
             ["commit", "-m", message],
+            in: directory
+        )
+    }
+
+    /// 提交指定文件（会先将这些文件加入暂存区，仅提交这些文件）
+    func commit(message: String, paths: [String], in directory: String) async throws {
+        guard !paths.isEmpty else {
+            try await commit(message: message, in: directory)
+            return
+        }
+        _ = try await runner.execute(
+            ["commit", "-m", message, "--"] + paths,
             in: directory
         )
     }

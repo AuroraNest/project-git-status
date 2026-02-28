@@ -238,6 +238,19 @@ class MainViewModel: ObservableObject {
         }
     }
 
+    /// 供详情页在完成操作后，把最新状态同步回侧边栏/菜单栏面板
+    func syncRepositoryRuntimeState(projectId: UUID, repoId: UUID, status: GitStatus?, lastError: String?) {
+        mutateRepository(projectId: projectId, repoId: repoId) {
+            $0.status = status
+            if let status {
+                $0.currentBranch = status.currentBranch
+            }
+            $0.lastError = lastError
+            // 详情页已经拿到最新状态了，就不要继续显示“转圈”
+            $0.isLoading = false
+        }
+    }
+
     // MARK: - 获取仓库
 
     func getRepository(byId id: UUID) -> GitRepository? {

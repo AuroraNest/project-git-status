@@ -3,7 +3,7 @@ import SwiftUI
 struct ChangesTabView: View {
     @EnvironmentObject var localization: AppLocalization
     @ObservedObject var viewModel: RepositoryViewModel
-    @State private var selectedFiles: Set<GitFile> = []
+    @State private var selectedPaths: Set<String> = []
     @State private var commitMessage: String = ""
     @State private var selectedFileForDiff: GitFile?
 
@@ -19,17 +19,29 @@ struct ChangesTabView: View {
         viewModel.status?.untrackedFiles ?? []
     }
 
-    private var allVisibleFiles: [GitFile] {
-        stagedFiles + modifiedFiles + untrackedFiles
-    }
-
-    private var selectedPaths: Set<String> {
-        Set(selectedFiles.map(\.path))
+    /// 暂存所选目标：仅对未暂存的变更（modified + untracked）生效
+    private var stageSelectedTargets: [GitFile] {
+        (modifiedFiles + untrackedFiles).filter { selectedPaths.contains($0.path) && $0.status != .conflicted }
     }
 
     private var allModifiedSelected: Bool {
         let modifiedPaths = Set(modifiedFiles.map(\.path))
         return !modifiedPaths.isEmpty && modifiedPaths.isSubset(of: selectedPaths)
+    }
+
+    /// 提交目标：有勾选则只提交勾选；未勾选则默认提交「已暂存 + 已修改」（不包含未跟踪）。
+    private var commitTargetFiles: [GitFile] {
+        let targets: [GitFile]
+        if !selectedPaths.isEmpty {
+            targets = (stagedFiles + modifiedFiles + untrackedFiles).filter { selectedPaths.contains($0.path) }
+        } else {
+            targets = stagedFiles + modifiedFiles
+        }
+        return targets.filter { $0.status != .conflicted }
+    }
+
+    private var allVisibleFiles: [GitFile] {
+        stagedFiles + modifiedFiles + untrackedFiles
     }
 
     private var normalizedCommitMessage: String {
@@ -46,7 +58,7 @@ struct ChangesTabView: View {
                     stagedFiles: stagedFiles,
                     modifiedFiles: modifiedFiles,
                     untrackedFiles: untrackedFiles,
-                    selectedFiles: $selectedFiles,
+                    selectedPaths: $selectedPaths,
                     selectedFileForDiff: $selectedFileForDiff,
                     allModifiedSelected: allModifiedSelected,
                     onToggleSelectAllModified: toggleSelectAllModified
@@ -74,13 +86,12 @@ struct ChangesTabView: View {
 
                         Button {
                             Task {
-                                let filesToStage = Array(selectedFiles.filter { !$0.isStaged })
-                                await viewModel.stageFiles(filesToStage)
+                                await viewModel.stageFiles(stageSelectedTargets)
                             }
                         } label: {
                             Label(localization.t(.stageSelected), systemImage: "plus")
                         }
-                        .disabled(selectedFiles.filter { !$0.isStaged }.isEmpty || viewModel.isOperating)
+                        .disabled(stageSelectedTargets.isEmpty || viewModel.isOperating)
 
                         Spacer()
 
@@ -122,7 +133,11 @@ struct ChangesTabView: View {
                         HStack(spacing: 8) {
                             Button {
                                 Task {
-                                    await viewModel.commit(message: normalizedCommitMessage)
+                                    await viewModel.stageCommitAndMaybePush(
+                                        message: normalizedCommitMessage,
+                                        files: commitTargetFiles,
+                                        push: false
+                                    )
                                     if viewModel.lastError == nil {
                                         commitMessage = ""
                                     }
@@ -137,13 +152,17 @@ struct ChangesTabView: View {
                             .buttonStyle(.borderedProminent)
                             .disabled(
                                 normalizedCommitMessage.isEmpty ||
-                                stagedFiles.isEmpty ||
+                                commitTargetFiles.isEmpty ||
                                 viewModel.isOperating
                             )
 
                             Button {
                                 Task {
-                                    await viewModel.commitAndPush(message: normalizedCommitMessage)
+                                    await viewModel.stageCommitAndMaybePush(
+                                        message: normalizedCommitMessage,
+                                        files: commitTargetFiles,
+                                        push: true
+                                    )
                                     if viewModel.lastError == nil {
                                         commitMessage = ""
                                     }
@@ -158,7 +177,7 @@ struct ChangesTabView: View {
                             .buttonStyle(.borderedProminent)
                             .disabled(
                                 normalizedCommitMessage.isEmpty ||
-                                stagedFiles.isEmpty ||
+                                commitTargetFiles.isEmpty ||
                                 viewModel.isOperating
                             )
                         }
@@ -190,16 +209,15 @@ struct ChangesTabView: View {
     private func toggleSelectAllModified() {
         let modifiedPaths = Set(modifiedFiles.map(\.path))
         if allModifiedSelected {
-            selectedFiles = Set(selectedFiles.filter { !modifiedPaths.contains($0.path) })
+            selectedPaths.subtract(modifiedPaths)
         } else {
-            let toAdd = modifiedFiles.filter { !selectedPaths.contains($0.path) }
-            selectedFiles.formUnion(toAdd)
+            selectedPaths.formUnion(modifiedPaths)
         }
     }
 
     private func syncSelectionWithVisibleFiles() {
         let visiblePaths = Set(allVisibleFiles.map(\.path))
-        selectedFiles = Set(selectedFiles.filter { visiblePaths.contains($0.path) })
+        selectedPaths.formIntersection(visiblePaths)
         if let currentDiffFile = selectedFileForDiff, !visiblePaths.contains(currentDiffFile.path) {
             selectedFileForDiff = nil
         }

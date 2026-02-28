@@ -334,6 +334,15 @@ final class AppLocalization: ObservableObject {
         }
     }
 
+    func fileNotFound(_ path: String) -> String {
+        switch language {
+        case .chinese:
+            return "文件不存在: \(path)"
+        case .english:
+            return "File not found: \(path)"
+        }
+    }
+
     private let translations: [AppLanguage: [LocalizedKey: String]] = [
         .chinese: [
             .language: "语言",

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RepositoryDetailView: View {
     @EnvironmentObject var localization: AppLocalization
+    @EnvironmentObject var mainViewModel: MainViewModel
     let repository: GitRepository
     @StateObject private var viewModel: RepositoryViewModel
     @State private var selectedTab: DetailTab = .changes
@@ -46,6 +47,23 @@ struct RepositoryDetailView: View {
         .navigationTitle(repository.name)
         .task {
             await viewModel.loadStatus()
+        }
+        // 同步到侧边栏/菜单栏，避免“提交/推送后状态不更新”
+        .onChange(of: viewModel.status) { newStatus in
+            mainViewModel.syncRepositoryRuntimeState(
+                projectId: repository.parentProjectId,
+                repoId: repository.id,
+                status: newStatus,
+                lastError: viewModel.lastError
+            )
+        }
+        .onChange(of: viewModel.lastError) { newError in
+            mainViewModel.syncRepositoryRuntimeState(
+                projectId: repository.parentProjectId,
+                repoId: repository.id,
+                status: viewModel.status,
+                lastError: newError
+            )
         }
         // 操作提示
         .overlay(alignment: .bottom) {

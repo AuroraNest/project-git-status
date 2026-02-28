@@ -171,6 +171,55 @@ class RepositoryViewModel: ObservableObject {
         }
     }
 
+    /// 暂存/提交（可选推送）指定文件；如果 files 为空，请在调用方提前处理默认集合。
+    /// 说明：通过 `git commit -- <paths>` 只提交目标文件，同时尽量不破坏其它已暂存内容。
+    func stageCommitAndMaybePush(message: String, files: [GitFile], push: Bool) async {
+        isOperating = true
+        defer { isOperating = false }
+
+        let targetFiles = files.filter { $0.status != .conflicted }
+        let targetPaths = Array(Set(targetFiles.flatMap { file in
+            var paths = [file.path]
+            if file.status == .renamed, let oldPath = file.oldPath, !oldPath.isEmpty {
+                paths.append(oldPath)
+            }
+            return paths
+        }))
+
+        guard !targetPaths.isEmpty else { return }
+
+        do {
+            // 未跟踪文件无法直接通过 commit pathspec 提交，需要先 add
+            let untrackedPaths = targetFiles
+                .filter { $0.status == .untracked }
+                .map(\.path)
+            if !untrackedPaths.isEmpty {
+                try await gitService.stageFiles(untrackedPaths, in: repository.path)
+            }
+
+            try await gitService.commit(message: message, paths: targetPaths, in: repository.path)
+
+            if push {
+                do {
+                    try await gitService.push(in: repository.path)
+                    await loadStatus()
+                    operationMessage = l10n.t(.commitAndPushSuccess)
+                    lastError = nil
+                } catch {
+                    await loadStatus()
+                    operationMessage = l10n.t(.commitSuccessButPushFailed)
+                    lastError = error.localizedDescription
+                }
+            } else {
+                await loadStatus()
+                operationMessage = l10n.t(.commitSuccess)
+                lastError = nil
+            }
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
     // MARK: - 远程操作
 
     func pull() async {
