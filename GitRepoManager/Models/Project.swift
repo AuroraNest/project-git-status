@@ -7,14 +7,20 @@ struct Project: Identifiable, Codable, Hashable {
     var path: String
     var repositories: [GitRepository]
     var isExpanded: Bool
+    var isPinned: Bool
+    var note: String
+    var sortOrder: Int
     var lastScannedAt: Date?
 
-    init(id: UUID = UUID(), name: String, path: String) {
+    init(id: UUID = UUID(), name: String, path: String, isPinned: Bool = false, note: String = "", sortOrder: Int = 0) {
         self.id = id
         self.name = name
         self.path = path
         self.repositories = []
         self.isExpanded = true
+        self.isPinned = isPinned
+        self.note = note
+        self.sortOrder = sortOrder
     }
 
     static func nameFromPath(_ path: String) -> String {
@@ -23,7 +29,7 @@ struct Project: Identifiable, Codable, Hashable {
 
     // Codable - 只持久化基本信息
     enum CodingKeys: String, CodingKey {
-        case id, name, path, isExpanded, lastScannedAt
+        case id, name, path, isExpanded, isPinned, note, sortOrder, lastScannedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -32,6 +38,9 @@ struct Project: Identifiable, Codable, Hashable {
         name = try container.decode(String.self, forKey: .name)
         path = try container.decode(String.self, forKey: .path)
         isExpanded = try container.decodeIfPresent(Bool.self, forKey: .isExpanded) ?? true
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+        sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
         lastScannedAt = try container.decodeIfPresent(Date.self, forKey: .lastScannedAt)
         repositories = []
     }
@@ -42,6 +51,9 @@ struct Project: Identifiable, Codable, Hashable {
         try container.encode(name, forKey: .name)
         try container.encode(path, forKey: .path)
         try container.encode(isExpanded, forKey: .isExpanded)
+        try container.encode(isPinned, forKey: .isPinned)
+        try container.encode(note, forKey: .note)
+        try container.encode(sortOrder, forKey: .sortOrder)
         try container.encodeIfPresent(lastScannedAt, forKey: .lastScannedAt)
     }
 }
