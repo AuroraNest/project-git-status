@@ -225,6 +225,7 @@ class MainViewModel: ObservableObject {
             }
         } catch {
             mutateRepository(projectId: repository.parentProjectId, repoId: repository.id) {
+                $0.status = nil
                 $0.lastError = error.localizedDescription
             }
         }
