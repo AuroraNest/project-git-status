@@ -96,6 +96,8 @@ struct MenuBarPanelView: View {
 
     @State private var selectedRepositoryId: UUID?
     @State private var commitMessage: String = ""
+    @AppStorage("menuBarChangeTipsVisible") private var changeTipsVisible = true
+    @AppStorage("menuBarChangeTipsCollapsed") private var changeTipsCollapsed = false
 
     private var defaultProject: Project? {
         viewModel.defaultProject
@@ -255,52 +257,83 @@ struct MenuBarPanelView: View {
 
                     if let status = selectedRepository?.status {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("变更提示")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            HStack(spacing: 8) {
-                                Label("已暂存 \(status.stagedFiles.count)", systemImage: "checkmark.circle")
-                                Label("已修改 \(status.modifiedFiles.count)", systemImage: "pencil.circle")
-                                Label("未跟踪 \(status.untrackedFiles.count)", systemImage: "questionmark.circle")
-                            }
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                            if modifiedDirectorySummaries.isEmpty {
-                                Text("当前没有已修改目录")
-                                    .font(.caption)
+                            HStack {
+                                Text("变更提示")
+                                    .font(.subheadline)
                                     .foregroundColor(.secondary)
-                            } else {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("已修改目录：")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    ForEach(Array(modifiedDirectorySummaries.prefix(3)), id: \.directory) { item in
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "folder")
-                                                .foregroundColor(.secondary)
-                                            Text(item.directory)
-                                                .lineLimit(1)
-                                            Spacer()
-                                            Text("\(item.count)")
-                                                .foregroundColor(.secondary)
+                                Spacer()
+
+                                if changeTipsVisible {
+                                    Button(changeTipsCollapsed ? "展开" : "收起") {
+                                        withAnimation(.easeInOut(duration: 0.15)) {
+                                            changeTipsCollapsed.toggle()
                                         }
-                                        .font(.caption)
                                     }
+                                    .buttonStyle(.borderless)
+                                    .font(.caption)
+
+                                    Button("隐藏") {
+                                        withAnimation(.easeInOut(duration: 0.15)) {
+                                            changeTipsVisible = false
+                                        }
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .font(.caption)
+                                } else {
+                                    Button("显示") {
+                                        withAnimation(.easeInOut(duration: 0.15)) {
+                                            changeTipsVisible = true
+                                        }
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .font(.caption)
                                 }
                             }
 
-                            if !changedFilePreviews.isEmpty {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("文件预览：")
+                            if changeTipsVisible && !changeTipsCollapsed {
+                                HStack(spacing: 8) {
+                                    Label("已暂存 \(status.stagedFiles.count)", systemImage: "checkmark.circle")
+                                    Label("已修改 \(status.modifiedFiles.count)", systemImage: "pencil.circle")
+                                    Label("未跟踪 \(status.untrackedFiles.count)", systemImage: "questionmark.circle")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                                if modifiedDirectorySummaries.isEmpty {
+                                    Text("当前没有已修改目录")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
-                                    ForEach(changedFilePreviews, id: \.self) { path in
-                                        Text(path)
-                                            .font(.caption2)
-                                            .lineLimit(1)
+                                } else {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("已修改目录：")
+                                            .font(.caption)
                                             .foregroundColor(.secondary)
+                                        ForEach(Array(modifiedDirectorySummaries.prefix(3)), id: \.directory) { item in
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "folder")
+                                                    .foregroundColor(.secondary)
+                                                Text(item.directory)
+                                                    .lineLimit(1)
+                                                Spacer()
+                                                Text("\(item.count)")
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .font(.caption)
+                                        }
+                                    }
+                                }
+
+                                if !changedFilePreviews.isEmpty {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("文件预览：")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        ForEach(changedFilePreviews, id: \.self) { path in
+                                            Text(path)
+                                                .font(.caption2)
+                                                .lineLimit(1)
+                                                .foregroundColor(.secondary)
+                                        }
                                     }
                                 }
                             }
