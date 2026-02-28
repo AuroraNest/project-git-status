@@ -33,6 +33,7 @@
 			024 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124; };
 			025 /* AddProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125; };
 			026 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126; };
+			027 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 127; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +64,7 @@
 			124 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
 			125 /* AddProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProjectSheet.swift; sourceTree = "<group>"; };
 			126 /* AppLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalization.swift; sourceTree = "<group>"; };
+			127 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -82,6 +84,7 @@
 				212 /* Services */,
 				213 /* ViewModels */,
 				214 /* Views */,
+				219 /* Resources */,
 			);
 			path = GitRepoManager;
 			sourceTree = "<group>";
@@ -187,6 +190,14 @@
 			path = Components;
 			sourceTree = "<group>";
 		};
+		219 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				127 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -195,6 +206,7 @@
 			buildConfigurationList = 400;
 			buildPhases = (
 				301 /* Sources */,
+				303 /* Resources */,
 				302 /* Frameworks */,
 			);
 			buildRules = (
@@ -264,6 +276,17 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		303 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				027 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		302 /* Frameworks */ = {
