@@ -15,7 +15,7 @@ struct SidebarView: View {
                                 .tag(repo.id)
                         }
                     } label: {
-                        ProjectRowView(project: project)
+                        ProjectRowView(projectId: project.id)
                     }
                     .contextMenu {
                         Button {

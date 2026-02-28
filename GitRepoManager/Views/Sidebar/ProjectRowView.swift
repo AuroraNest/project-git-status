@@ -1,29 +1,37 @@
 import SwiftUI
 
 struct ProjectRowView: View {
-    let project: Project
+    let projectId: UUID
+    @EnvironmentObject var viewModel: MainViewModel
     @EnvironmentObject var localization: AppLocalization
 
+    private var project: Project? {
+        viewModel.projects.first(where: { $0.id == projectId })
+    }
+
     var totalChanges: Int {
-        project.repositories.reduce(0) { sum, repo in
+        (project?.repositories ?? []).reduce(0) { sum, repo in
             sum + (repo.status?.totalChangedCount ?? 0)
         }
     }
 
     var totalUnpushed: Int {
-        project.repositories.reduce(0) { sum, repo in
+        (project?.repositories ?? []).reduce(0) { sum, repo in
             sum + (repo.status?.aheadCount ?? 0)
         }
     }
 
     var body: some View {
+        let projectName = project?.name ?? ""
+        let repositoryCount = project?.repositories.count ?? 0
+
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 8) {
                 Image(systemName: "folder.fill")
                     .foregroundColor(.accentColor)
                     .frame(width: 16, alignment: .leading)
 
-                Text(project.name)
+                Text(projectName)
                     .font(.headline)
                     .lineLimit(1)
 
@@ -39,7 +47,7 @@ struct ProjectRowView: View {
                 }
             }
 
-            Text(localization.repositoriesCount(project.repositories.count))
+            Text(localization.repositoriesCount(repositoryCount))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.leading, 24)
