@@ -14,24 +14,33 @@ struct BranchesTabView: View {
                 Button {
                     showNewBranchSheet = true
                 } label: {
-                    Label(localization.t(.newBranch), systemImage: "plus.circle")
+                    Label(
+                        viewModel.progressText(idle: .newBranch, progress: .createBranchInProgress),
+                        systemImage: "plus.circle"
+                    )
                 }
+                .disabled(viewModel.isRepoBusy)
 
                 Button {
                     showMergeBranchSheet = true
                 } label: {
-                    Label(localization.t(.mergeBranch), systemImage: "arrow.triangle.merge")
+                    Label(
+                        viewModel.progressText(idle: .mergeBranch, progress: .mergeBranchInProgress),
+                        systemImage: "arrow.triangle.merge")
                 }
-                .disabled(viewModel.localBranches.count < 2)
+                .disabled(viewModel.localBranches.count < 2 || viewModel.isRepoBusy)
 
                 Spacer()
 
                 Button {
                     Task { await viewModel.fetchBranches() }
                 } label: {
-                    Label(localization.t(.fetchRemote), systemImage: "arrow.down.circle")
+                    Label(
+                        viewModel.progressText(idle: .fetchRemote, progress: .fetchRemoteInProgress),
+                        systemImage: "arrow.down.circle"
+                    )
                 }
-                .disabled(viewModel.isLoading)
+                .disabled(viewModel.isRepoBusy)
             }
             .buttonStyle(.bordered)
             .padding()
@@ -43,7 +52,11 @@ struct BranchesTabView: View {
                 // 本地分支
                 Section(localization.t(.localBranches)) {
                     ForEach(viewModel.localBranches) { branch in
-                        BranchRowView(branch: branch) {
+                        BranchRowView(
+                            branch: branch,
+                            actionsDisabled: viewModel.isRepoBusy,
+                            actionTitle: viewModel.progressText(idle: .switchBranch, progress: .switchBranchInProgress)
+                        ) {
                             Task { await viewModel.checkoutBranch(branch) }
                         }
                     }
@@ -53,7 +66,12 @@ struct BranchesTabView: View {
                 if !viewModel.remoteBranches.isEmpty {
                     Section(localization.t(.remoteBranches)) {
                         ForEach(viewModel.remoteBranches) { branch in
-                            BranchRowView(branch: branch, isRemote: true) {
+                            BranchRowView(
+                                branch: branch,
+                                isRemote: true,
+                                actionsDisabled: viewModel.isRepoBusy,
+                                actionTitle: viewModel.progressText(idle: .checkout, progress: .switchBranchInProgress)
+                            ) {
                                 Task { await viewModel.checkoutRemoteBranch(branch) }
                             }
                         }
@@ -74,7 +92,7 @@ struct BranchesTabView: View {
             }
         }
         .sheet(isPresented: $showNewBranchSheet) {
-            NewBranchSheet(branchName: $newBranchName) {
+            NewBranchSheet(branchName: $newBranchName, isBusy: viewModel.isRepoBusy) {
                 Task {
                     await viewModel.createBranch(name: newBranchName)
                     newBranchName = ""
@@ -85,7 +103,8 @@ struct BranchesTabView: View {
         .sheet(isPresented: $showMergeBranchSheet) {
             MergeBranchSheet(
                 branches: viewModel.localBranches,
-                currentBranch: viewModel.status?.currentBranch ?? ""
+                currentBranch: viewModel.status?.currentBranch ?? "",
+                isBusy: viewModel.isRepoBusy
             ) { branch in
                 Task {
                     await viewModel.mergeBranch(branch)
@@ -105,6 +124,8 @@ struct BranchRowView: View {
     @EnvironmentObject var localization: AppLocalization
     let branch: GitBranch
     var isRemote: Bool = false
+    var actionsDisabled: Bool = false
+    var actionTitle: String? = nil
     let onCheckout: () -> Void
 
     var body: some View {
@@ -131,11 +152,12 @@ struct BranchRowView: View {
             Spacer()
 
             if !branch.isCurrent {
-                Button(isRemote ? localization.t(.checkout) : localization.t(.switchBranch)) {
+                Button(actionTitle ?? (isRemote ? localization.t(.checkout) : localization.t(.switchBranch))) {
                     onCheckout()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .disabled(actionsDisabled)
             } else {
                 Text(localization.t(.current))
                     .font(.caption)
@@ -149,6 +171,7 @@ struct BranchRowView: View {
 struct NewBranchSheet: View {
     @EnvironmentObject var localization: AppLocalization
     @Binding var branchName: String
+    var isBusy: Bool = false
     let onCreate: () -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -160,6 +183,7 @@ struct NewBranchSheet: View {
 
             TextField(localization.t(.branchName), text: $branchName)
                 .textFieldStyle(.roundedBorder)
+                .disabled(isBusy)
 
             HStack {
                 Button(localization.t(.cancel)) {
@@ -173,7 +197,7 @@ struct NewBranchSheet: View {
                     onCreate()
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(branchName.isEmpty)
+                .disabled(branchName.isEmpty || isBusy)
                 .buttonStyle(.borderedProminent)
             }
         }
@@ -186,6 +210,7 @@ struct MergeBranchSheet: View {
     @EnvironmentObject var localization: AppLocalization
     let branches: [GitBranch]
     let currentBranch: String
+    var isBusy: Bool = false
     let onMerge: (GitBranch) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var selectedBranch: GitBranch?
@@ -211,6 +236,7 @@ struct MergeBranchSheet: View {
                 }
             }
             .pickerStyle(.menu)
+            .disabled(isBusy)
 
             HStack {
                 Button(localization.t(.cancel)) {
@@ -226,7 +252,7 @@ struct MergeBranchSheet: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(selectedBranch == nil)
+                .disabled(selectedBranch == nil || isBusy)
                 .buttonStyle(.borderedProminent)
             }
         }

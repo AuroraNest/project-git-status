@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProjectRowView: View {
     let projectId: UUID
+    let isSelected: Bool
     let isExpanded: Bool
     let toggleExpand: () -> Void
     @EnvironmentObject var viewModel: MainViewModel
@@ -33,11 +34,14 @@ struct ProjectRowView: View {
             HStack(spacing: 8) {
                 Button(action: toggleExpand) {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption)
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
-                        .frame(width: 12, alignment: .center)
+                        .frame(width: 14, height: 14, alignment: .center)
+                        .padding(4)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .frame(width: 22, height: 22)
 
                 Image(systemName: "folder.fill")
                     .foregroundColor(.accentColor)
@@ -78,6 +82,11 @@ struct ProjectRowView: View {
                     .padding(.leading, 36)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ? Color.accentColor.opacity(0.16) : Color.clear)
+        )
     }
 }

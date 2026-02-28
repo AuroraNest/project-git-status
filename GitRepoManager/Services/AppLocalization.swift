@@ -158,6 +158,25 @@ enum LocalizedKey: Hashable {
     case unknownError
     case commandTimeout
     case commandCannotBeEmpty
+    case refreshStatusInProgress
+    case fetchRemoteInProgress
+    case stageAllInProgress
+    case stageModifiedOnlyInProgress
+    case stageSelectedInProgress
+    case unstageAllInProgress
+    case unstageSelectedInProgress
+    case commitInProgress
+    case commitAndPushInProgress
+    case pullInProgress
+    case pushInProgress
+    case syncInProgress
+    case forcePullOverwriteLocalInProgress
+    case forcePushOverwriteRemoteInProgress
+    case switchBranchInProgress
+    case createBranchInProgress
+    case mergeBranchInProgress
+    case discardChangesInProgress
+    case addToGitignoreInProgress
     case fileStatusModified
     case fileStatusAdded
     case fileStatusDeleted
@@ -684,6 +703,25 @@ final class AppLocalization: ObservableObject {
             .unknownError: "未知错误",
             .commandTimeout: "命令超时",
             .commandCannotBeEmpty: "命令不能为空",
+            .refreshStatusInProgress: "刷新状态中...",
+            .fetchRemoteInProgress: "获取远程中...",
+            .stageAllInProgress: "暂存全部中...",
+            .stageModifiedOnlyInProgress: "暂存已修改中...",
+            .stageSelectedInProgress: "暂存选中文件中...",
+            .unstageAllInProgress: "取消全部暂存中...",
+            .unstageSelectedInProgress: "取消选中暂存中...",
+            .commitInProgress: "提交中...",
+            .commitAndPushInProgress: "提交并推送中...",
+            .pullInProgress: "拉取中...",
+            .pushInProgress: "推送中...",
+            .syncInProgress: "同步中...",
+            .forcePullOverwriteLocalInProgress: "覆盖本地拉取中...",
+            .forcePushOverwriteRemoteInProgress: "覆盖云端推送中...",
+            .switchBranchInProgress: "切换分支中...",
+            .createBranchInProgress: "创建分支中...",
+            .mergeBranchInProgress: "合并分支中...",
+            .discardChangesInProgress: "放弃更改中...",
+            .addToGitignoreInProgress: "添加到 .gitignore 中...",
             .fileStatusModified: "已修改",
             .fileStatusAdded: "已添加",
             .fileStatusDeleted: "已删除",
@@ -834,6 +872,25 @@ final class AppLocalization: ObservableObject {
             .unknownError: "Unknown error",
             .commandTimeout: "Command timed out",
             .commandCannotBeEmpty: "Command cannot be empty",
+            .refreshStatusInProgress: "Refreshing status...",
+            .fetchRemoteInProgress: "Fetching remote...",
+            .stageAllInProgress: "Staging all changes...",
+            .stageModifiedOnlyInProgress: "Staging modified files...",
+            .stageSelectedInProgress: "Staging selected files...",
+            .unstageAllInProgress: "Unstaging all changes...",
+            .unstageSelectedInProgress: "Unstaging selected files...",
+            .commitInProgress: "Committing...",
+            .commitAndPushInProgress: "Committing and pushing...",
+            .pullInProgress: "Pulling...",
+            .pushInProgress: "Pushing...",
+            .syncInProgress: "Syncing...",
+            .forcePullOverwriteLocalInProgress: "Force-pulling and overwriting local...",
+            .forcePushOverwriteRemoteInProgress: "Force-pushing and overwriting remote...",
+            .switchBranchInProgress: "Switching branch...",
+            .createBranchInProgress: "Creating branch...",
+            .mergeBranchInProgress: "Merging branch...",
+            .discardChangesInProgress: "Discarding changes...",
+            .addToGitignoreInProgress: "Adding to .gitignore...",
             .fileStatusModified: "Modified",
             .fileStatusAdded: "Added",
             .fileStatusDeleted: "Deleted",

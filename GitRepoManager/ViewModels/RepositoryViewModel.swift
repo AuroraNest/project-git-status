@@ -10,6 +10,8 @@ class RepositoryViewModel: ObservableObject {
     @Published var branches: [GitBranch] = []
     @Published var isLoading = false
     @Published var isOperating = false
+    @Published private(set) var inProgressKey: LocalizedKey?
+    @Published var inProgressMessage: String?
     @Published var lastError: String?
     @Published var operationMessage: String?
 
@@ -28,6 +30,17 @@ class RepositoryViewModel: ObservableObject {
         (status?.modifiedFiles ?? []) + (status?.untrackedFiles ?? [])
     }
 
+    var isRepoBusy: Bool {
+        isLoading || isOperating
+    }
+
+    func progressText(idle idleKey: LocalizedKey, progress progressKey: LocalizedKey) -> String {
+        if inProgressKey == progressKey {
+            return l10n.t(progressKey)
+        }
+        return l10n.t(idleKey)
+    }
+
     init(repository: GitRepository) {
         self.repository = repository
         self.status = repository.status
@@ -35,9 +48,10 @@ class RepositoryViewModel: ObservableObject {
 
     // MARK: - 状态加载
 
-    func loadStatus() async {
-        isLoading = true
-        defer { isLoading = false }
+    func loadStatus(showProgress: Bool = false) async {
+        let shouldShowProgress = showProgress && !isOperating
+        beginLoading(progressKey: shouldShowProgress ? .refreshStatusInProgress : nil)
+        defer { endLoading(showProgress: shouldShowProgress) }
 
         do {
             status = try await gitService.getStatus(in: repository.path)
@@ -49,8 +63,9 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func fetchBranches() async {
-        isLoading = true
-        defer { isLoading = false }
+        guard !isRepoBusy else { return }
+        beginLoading(progressKey: .fetchRemoteInProgress)
+        defer { endLoading(showProgress: true) }
 
         do {
             try await gitService.fetch(in: repository.path)
@@ -64,12 +79,12 @@ class RepositoryViewModel: ObservableObject {
     // MARK: - 暂存操作
 
     func stageAll() async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.stageAllInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.stageAll(in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.t(.stagedAllFiles)
         } catch {
             lastError = error.localizedDescription
@@ -78,8 +93,8 @@ class RepositoryViewModel: ObservableObject {
 
     /// 仅暂存「已修改」文件（不包含未跟踪文件）
     func stageModifiedOnly() async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.stageModifiedOnlyInProgress) else { return }
+        defer { endOperation() }
 
         do {
             let modifiedFiles = status?.modifiedFiles ?? []
@@ -89,7 +104,7 @@ class RepositoryViewModel: ObservableObject {
                 return
             }
             try await gitService.stageFiles(paths, in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.stagedModifiedFilesCount(paths.count)
         } catch {
             lastError = error.localizedDescription
@@ -97,13 +112,13 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func stageFiles(_ files: [GitFile]) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.stageSelectedInProgress) else { return }
+        defer { endOperation() }
 
         do {
             let paths = files.map { $0.path }
             try await gitService.stageFiles(paths, in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.stagedFilesCount(files.count)
         } catch {
             lastError = error.localizedDescription
@@ -111,12 +126,12 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func unstageAll() async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.unstageAllInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.unstageAll(in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.t(.unstagedAllFiles)
         } catch {
             lastError = error.localizedDescription
@@ -124,13 +139,13 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func unstageFiles(_ files: [GitFile]) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.unstageSelectedInProgress) else { return }
+        defer { endOperation() }
 
         do {
             let paths = files.map { $0.path }
             try await gitService.unstageFiles(paths, in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
         } catch {
             lastError = error.localizedDescription
         }
@@ -139,12 +154,12 @@ class RepositoryViewModel: ObservableObject {
     // MARK: - 提交操作
 
     func commit(message: String) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.commitInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.commit(message: message, in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.t(.commitSuccess)
         } catch {
             lastError = error.localizedDescription
@@ -152,17 +167,17 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func commitAndPush(message: String) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.commitAndPushInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.commit(message: message, in: repository.path)
             do {
                 try await gitService.push(in: repository.path)
-                await loadStatus()
+                await loadStatus(showProgress: false)
                 operationMessage = l10n.t(.commitAndPushSuccess)
             } catch {
-                await loadStatus()
+                await loadStatus(showProgress: false)
                 operationMessage = l10n.t(.commitSuccessButPushFailed)
                 lastError = error.localizedDescription
             }
@@ -174,8 +189,8 @@ class RepositoryViewModel: ObservableObject {
     /// 暂存/提交（可选推送）指定文件；如果 files 为空，请在调用方提前处理默认集合。
     /// 说明：通过 `git commit -- <paths>` 只提交目标文件，同时尽量不破坏其它已暂存内容。
     func stageCommitAndMaybePush(message: String, files: [GitFile], push: Bool) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(push ? .commitAndPushInProgress : .commitInProgress) else { return }
+        defer { endOperation() }
 
         let targetFiles = files.filter { $0.status != .conflicted }
         let targetPaths = Array(Set(targetFiles.flatMap { file in
@@ -202,16 +217,16 @@ class RepositoryViewModel: ObservableObject {
             if push {
                 do {
                     try await gitService.push(in: repository.path)
-                    await loadStatus()
+                    await loadStatus(showProgress: false)
                     operationMessage = l10n.t(.commitAndPushSuccess)
                     lastError = nil
                 } catch {
-                    await loadStatus()
+                    await loadStatus(showProgress: false)
                     operationMessage = l10n.t(.commitSuccessButPushFailed)
                     lastError = error.localizedDescription
                 }
             } else {
-                await loadStatus()
+                await loadStatus(showProgress: false)
                 operationMessage = l10n.t(.commitSuccess)
                 lastError = nil
             }
@@ -223,12 +238,12 @@ class RepositoryViewModel: ObservableObject {
     // MARK: - 远程操作
 
     func pull() async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.pullInProgress) else { return }
+        defer { endOperation() }
 
         do {
             let summary = try await gitService.pull(in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             if summary.isAlreadyUpToDate {
                 operationMessage = l10n.pullAlreadyUpToDateSummary()
             } else {
@@ -246,12 +261,12 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func push() async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.pushInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.push(in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.t(.pushSuccess)
         } catch {
             lastError = error.localizedDescription
@@ -259,8 +274,8 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func sync() async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.syncInProgress) else { return }
+        defer { endOperation() }
 
         do {
             let summary = try await gitService.pull(in: repository.path)
@@ -278,11 +293,11 @@ class RepositoryViewModel: ObservableObject {
 
             do {
                 try await gitService.push(in: repository.path)
-                await loadStatus()
+                await loadStatus(showProgress: false)
                 operationMessage = l10n.syncCompletedSummary(pullMessage)
                 lastError = nil
             } catch {
-                await loadStatus()
+                await loadStatus(showProgress: false)
                 operationMessage = l10n.syncPullSucceededButPushFailed(pullMessage)
                 lastError = error.localizedDescription
             }
@@ -292,12 +307,12 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func forcePullOverwritingLocal() async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.forcePullOverwriteLocalInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.forcePullOverwritingLocal(in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.t(.forcePullOverwriteLocalSuccess)
             lastError = nil
         } catch {
@@ -306,12 +321,12 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func forcePushOverwritingRemote() async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.forcePushOverwriteRemoteInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.forcePushOverwritingRemote(in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.t(.forcePushOverwriteRemoteSuccess)
             lastError = nil
         } catch {
@@ -322,12 +337,12 @@ class RepositoryViewModel: ObservableObject {
     // MARK: - 分支操作
 
     func checkoutBranch(_ branch: GitBranch) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.switchBranchInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.checkout(branch: branch.name, in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.switchedToBranch(branch.name)
         } catch {
             lastError = error.localizedDescription
@@ -335,13 +350,13 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func checkoutRemoteBranch(_ branch: GitBranch) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.switchBranchInProgress) else { return }
+        defer { endOperation() }
 
         do {
             let localName = branch.name.replacingOccurrences(of: "origin/", with: "")
             try await gitService.createBranch(name: localName, in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.createdAndSwitchedToBranch(localName)
         } catch {
             lastError = error.localizedDescription
@@ -349,12 +364,12 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func createBranch(name: String) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.createBranchInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.createBranch(name: name, in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.createdBranch(name)
         } catch {
             lastError = error.localizedDescription
@@ -362,12 +377,12 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func mergeBranch(_ branch: GitBranch) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.mergeBranchInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.merge(branch: branch.name, in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.mergedBranch(branch.name)
         } catch {
             lastError = error.localizedDescription
@@ -385,12 +400,12 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func discardChanges(for file: GitFile) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.discardChangesInProgress) else { return }
+        defer { endOperation() }
 
         do {
             try await gitService.discardChanges([file.path], in: repository.path)
-            await loadStatus()
+            await loadStatus(showProgress: false)
             operationMessage = l10n.t(.discardedChanges)
         } catch {
             lastError = error.localizedDescription
@@ -398,8 +413,8 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func addToGitignore(path: String) async {
-        isOperating = true
-        defer { isOperating = false }
+        guard beginOperation(.addToGitignoreInProgress) else { return }
+        defer { endOperation() }
 
         do {
             let gitignoreURL = URL(fileURLWithPath: repository.path).appendingPathComponent(".gitignore")
@@ -417,9 +432,48 @@ class RepositoryViewModel: ObservableObject {
             existing.append("\n")
             try existing.write(to: gitignoreURL, atomically: true, encoding: .utf8)
 
-            await loadStatus()
+            await loadStatus(showProgress: false)
         } catch {
             lastError = error.localizedDescription
+        }
+    }
+
+    private func beginLoading(progressKey: LocalizedKey?) {
+        isLoading = true
+
+        guard let progressKey else { return }
+
+        operationMessage = nil
+        lastError = nil
+        inProgressKey = progressKey
+        if !isOperating {
+            inProgressMessage = l10n.t(progressKey)
+        }
+    }
+
+    private func endLoading(showProgress: Bool) {
+        isLoading = false
+        if showProgress && !isOperating {
+            inProgressKey = nil
+            inProgressMessage = nil
+        }
+    }
+
+    private func beginOperation(_ progressKey: LocalizedKey) -> Bool {
+        guard !isRepoBusy else { return false }
+        isOperating = true
+        inProgressKey = progressKey
+        inProgressMessage = l10n.t(progressKey)
+        operationMessage = nil
+        lastError = nil
+        return true
+    }
+
+    private func endOperation() {
+        isOperating = false
+        if !isLoading {
+            inProgressKey = nil
+            inProgressMessage = nil
         }
     }
 
@@ -463,6 +517,10 @@ class RepositoryViewModel: ObservableObject {
     }
 
     func clearMessages() {
+        if !isRepoBusy {
+            inProgressKey = nil
+            inProgressMessage = nil
+        }
         operationMessage = nil
         lastError = nil
     }

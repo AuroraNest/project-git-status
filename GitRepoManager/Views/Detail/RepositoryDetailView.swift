@@ -67,7 +67,21 @@ struct RepositoryDetailView: View {
         }
         // 操作提示
         .overlay(alignment: .bottom) {
-            if let message = viewModel.operationMessage {
+            if let inProgress = viewModel.inProgressMessage {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(inProgress)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding()
+                .background(.regularMaterial)
+                .cornerRadius(8)
+                .padding()
+                .frame(maxWidth: 520)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if let message = viewModel.operationMessage {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
@@ -161,33 +175,45 @@ struct RepositoryHeaderView: View {
                 Button {
                     Task { await viewModel.sync() }
                 } label: {
-                    Label(localization.t(.sync), systemImage: "arrow.triangle.2.circlepath")
+                    Label(
+                        viewModel.progressText(idle: .sync, progress: .syncInProgress),
+                        systemImage: "arrow.triangle.2.circlepath"
+                    )
                 }
-                .disabled(viewModel.isOperating)
+                .disabled(viewModel.isRepoBusy)
                 .help(localization.t(.syncHelp))
 
                 Button {
                     Task { await viewModel.pull() }
                 } label: {
-                    Label(localization.t(.pull), systemImage: "arrow.down.circle")
+                    Label(
+                        viewModel.progressText(idle: .pull, progress: .pullInProgress),
+                        systemImage: "arrow.down.circle"
+                    )
                 }
-                .disabled(viewModel.isOperating)
+                .disabled(viewModel.isRepoBusy)
                 .help(localization.t(.pullHelp))
 
                 Button {
                     Task { await viewModel.push() }
                 } label: {
-                    Label(localization.t(.push), systemImage: "arrow.up.circle")
+                    Label(
+                        viewModel.progressText(idle: .push, progress: .pushInProgress),
+                        systemImage: "arrow.up.circle"
+                    )
                 }
-                .disabled(viewModel.isOperating || (viewModel.status?.aheadCount ?? 0) == 0)
+                .disabled(viewModel.isRepoBusy || (viewModel.status?.aheadCount ?? 0) == 0)
                 .help(localization.t(.pushHelp))
 
                 Button {
-                    Task { await viewModel.loadStatus() }
+                    Task { await viewModel.loadStatus(showProgress: true) }
                 } label: {
-                    Image(systemName: "arrow.clockwise")
+                    Label(
+                        viewModel.progressText(idle: .refreshStatus, progress: .refreshStatusInProgress),
+                        systemImage: "arrow.clockwise"
+                    )
                 }
-                .disabled(viewModel.isLoading)
+                .disabled(viewModel.isRepoBusy)
                 .help(localization.t(.refreshStatus))
 
                 Menu {
@@ -206,7 +232,7 @@ struct RepositoryHeaderView: View {
                     Label(localization.t(.dangerActions), systemImage: "exclamationmark.triangle")
                 }
                 .tint(.orange)
-                .disabled(viewModel.isLoading || viewModel.isOperating)
+                .disabled(viewModel.isRepoBusy)
                 .help(localization.t(.dangerActionsHelp))
             }
             .buttonStyle(.bordered)

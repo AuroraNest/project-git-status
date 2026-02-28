@@ -10,9 +10,16 @@ struct MainView: View {
         return viewModel.getRepository(byId: id)
     }
 
+    private var selectedRepositoryBinding: Binding<UUID?> {
+        Binding(
+            get: { viewModel.selectedRepositoryId },
+            set: { viewModel.setSelectedRepository($0) }
+        )
+    }
+
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(selectedRepositoryId: $viewModel.selectedRepositoryId)
+            SidebarView(selectedRepositoryId: selectedRepositoryBinding)
                 .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 350)
         } detail: {
             if let repo = selectedRepository {

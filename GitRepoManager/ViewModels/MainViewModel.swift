@@ -9,6 +9,7 @@ class MainViewModel: ObservableObject {
     @Published var showingError = false
     @Published var errorMessage = ""
     @Published var selectedRepositoryId: UUID?
+    @Published var selectedProjectId: UUID?
     @Published var defaultProjectId: UUID?
     @Published var menuBarMessage: String?
 
@@ -53,8 +54,13 @@ class MainViewModel: ObservableObject {
         for projectIndex in projects.indices {
             let project = projects[projectIndex]
             do {
-                let repos = try await scanner.scanForRepositories(
+                let scannedRepos = try await scanner.scanForRepositories(
                     in: project.path,
+                    projectId: project.id
+                )
+                let repos = mergeScannedRepositories(
+                    scannedRepos,
+                    with: projects[projectIndex].repositories,
                     projectId: project.id
                 )
                 projects[projectIndex].repositories = repos
@@ -68,6 +74,7 @@ class MainViewModel: ObservableObject {
 
         normalizeDefaultProjectSelection()
         syncSelectedRepositoryWithCurrentProjects()
+        syncSelectedProjectWithCurrentProjects()
         saveProjects()
     }
 
@@ -103,11 +110,8 @@ class MainViewModel: ObservableObject {
     func removeProject(_ project: Project) {
         projects.removeAll { $0.id == project.id }
         applyProjectOrdering()
-
-        if let selectedRepositoryId,
-           getRepository(byId: selectedRepositoryId) == nil {
-            self.selectedRepositoryId = nil
-        }
+        syncSelectedRepositoryWithCurrentProjects()
+        syncSelectedProjectWithCurrentProjects()
 
         normalizeDefaultProjectSelection()
         saveProjects()
@@ -121,6 +125,7 @@ class MainViewModel: ObservableObject {
 
     func setProjectExpanded(_ project: Project, isExpanded: Bool) {
         if let index = projects.firstIndex(where: { $0.id == project.id }) {
+            guard projects[index].isExpanded != isExpanded else { return }
             projects[index].isExpanded = isExpanded
             saveProjects()
         }
@@ -204,8 +209,13 @@ class MainViewModel: ObservableObject {
         guard let index = projects.firstIndex(where: { $0.id == project.id }) else { return }
 
         do {
-            let repos = try await scanner.scanForRepositories(
+            let scannedRepos = try await scanner.scanForRepositories(
                 in: project.path,
+                projectId: project.id
+            )
+            let repos = mergeScannedRepositories(
+                scannedRepos,
+                with: projects[index].repositories,
                 projectId: project.id
             )
             projects[index].repositories = repos
@@ -214,6 +224,7 @@ class MainViewModel: ObservableObject {
             await refreshRepositories(repos)
             normalizeDefaultProjectSelection()
             syncSelectedRepositoryWithCurrentProjects()
+            syncSelectedProjectWithCurrentProjects()
             saveProjects()
         } catch {
             showError(l10n.scanRepositoriesFailed(error.localizedDescription))
@@ -373,6 +384,19 @@ class MainViewModel: ObservableObject {
 
     func setSelectedRepository(_ repositoryId: UUID?) {
         selectedRepositoryId = repositoryId
+        guard let repositoryId else { return }
+        syncProjectSelectionForRepository(repositoryId)
+    }
+
+    func setSelectedProject(_ projectId: UUID?, clearRepositorySelection: Bool = true) {
+        if let projectId, !projects.contains(where: { $0.id == projectId }) {
+            return
+        }
+
+        selectedProjectId = projectId
+        if clearRepositorySelection {
+            selectedRepositoryId = nil
+        }
     }
 
     func clearMenuBarMessage() {
@@ -436,9 +460,69 @@ class MainViewModel: ObservableObject {
 
     private func syncSelectedRepositoryWithCurrentProjects() {
         guard let selectedRepositoryId else { return }
-        if getRepository(byId: selectedRepositoryId) == nil {
+        guard getRepository(byId: selectedRepositoryId) != nil else {
             self.selectedRepositoryId = nil
+            return
         }
+        syncProjectSelectionForRepository(selectedRepositoryId)
+    }
+
+    private func syncSelectedProjectWithCurrentProjects() {
+        guard let selectedProjectId else { return }
+        if !projects.contains(where: { $0.id == selectedProjectId }) {
+            self.selectedProjectId = nil
+        }
+    }
+
+    private func syncProjectSelectionForRepository(_ repositoryId: UUID) {
+        guard let repository = getRepository(byId: repositoryId) else {
+            selectedRepositoryId = nil
+            return
+        }
+
+        selectedProjectId = repository.parentProjectId
+
+        guard let projectIndex = projects.firstIndex(where: { $0.id == repository.parentProjectId }),
+              !projects[projectIndex].isExpanded else {
+            return
+        }
+
+        projects[projectIndex].isExpanded = true
+        saveProjects()
+    }
+
+    private func mergeScannedRepositories(
+        _ scannedRepos: [GitRepository],
+        with existingRepos: [GitRepository],
+        projectId: UUID
+    ) -> [GitRepository] {
+        let existingByPath = existingRepos.reduce(into: [String: GitRepository]()) { result, repo in
+            result[normalizedRepositoryPath(repo.path)] = repo
+        }
+
+        return scannedRepos.map { scanned in
+            guard let existing = existingByPath[normalizedRepositoryPath(scanned.path)] else {
+                return scanned
+            }
+
+            var merged = GitRepository(
+                id: existing.id,
+                name: scanned.name,
+                path: scanned.path,
+                parentProjectId: projectId,
+                relativePath: scanned.relativePath
+            )
+            merged.status = existing.status
+            merged.branches = existing.branches
+            merged.currentBranch = existing.currentBranch
+            merged.isLoading = existing.isLoading
+            merged.lastError = existing.lastError
+            return merged
+        }
+    }
+
+    private func normalizedRepositoryPath(_ path: String) -> String {
+        URL(fileURLWithPath: path).standardizedFileURL.path
     }
 
     private func applyProjectOrdering() {

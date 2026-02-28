@@ -83,6 +83,7 @@ struct FileListView: View {
                             .buttonStyle(.plain)
                             .font(.caption)
                             .foregroundColor(.accentColor)
+                            .disabled(viewModel.isRepoBusy)
                             Text("\(modifiedFiles.count)")
                                 .foregroundColor(.secondary)
                         }
@@ -144,28 +145,31 @@ struct FileListView: View {
         Button(localization.t(.openFileHead)) {
             viewModel.openFileAtHEAD(file)
         }
-        .disabled(file.status == .untracked || file.status == .added)
+        .disabled(viewModel.isRepoBusy || file.status == .untracked || file.status == .added)
 
         Divider()
 
         if file.isStaged {
-            Button(localization.t(.unstageChanges)) {
+            Button(viewModel.progressText(idle: .unstageChanges, progress: .unstageSelectedInProgress)) {
                 Task { await viewModel.unstageFiles([file]) }
             }
+            .disabled(viewModel.isRepoBusy)
         } else {
-            Button(localization.t(.stageChanges)) {
+            Button(viewModel.progressText(idle: .stageChanges, progress: .stageSelectedInProgress)) {
                 Task { await viewModel.stageFiles([file]) }
             }
+            .disabled(viewModel.isRepoBusy)
         }
 
-        Button(localization.t(.discardChanges)) {
+        Button(viewModel.progressText(idle: .discardChanges, progress: .discardChangesInProgress)) {
             Task { await viewModel.discardChanges(for: file) }
         }
-        .disabled(file.status == .untracked || file.status == .added)
+        .disabled(viewModel.isRepoBusy || file.status == .untracked || file.status == .added)
 
-        Button(localization.t(.addToGitignore)) {
+        Button(viewModel.progressText(idle: .addToGitignore, progress: .addToGitignoreInProgress)) {
             Task { await viewModel.addToGitignore(path: file.path) }
         }
+        .disabled(viewModel.isRepoBusy)
 
         Divider()
 

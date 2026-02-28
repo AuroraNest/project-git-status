@@ -73,34 +73,46 @@ struct ChangesTabView: View {
                         Button {
                             Task { await viewModel.stageAll() }
                         } label: {
-                            Label(localization.t(.stageAll), systemImage: "plus.circle")
+                            Label(
+                                viewModel.progressText(idle: .stageAll, progress: .stageAllInProgress),
+                                systemImage: "plus.circle"
+                            )
                         }
-                        .disabled(viewModel.unstageableFiles.isEmpty || viewModel.isOperating)
+                        .disabled(viewModel.unstageableFiles.isEmpty || viewModel.isRepoBusy)
 
                         Button {
                             Task { await viewModel.stageModifiedOnly() }
                         } label: {
-                            Label(localization.t(.stageModifiedOnly), systemImage: "checkmark.circle")
+                            Label(
+                                viewModel.progressText(idle: .stageModifiedOnly, progress: .stageModifiedOnlyInProgress),
+                                systemImage: "checkmark.circle"
+                            )
                         }
-                        .disabled(modifiedFiles.isEmpty || viewModel.isOperating)
+                        .disabled(modifiedFiles.isEmpty || viewModel.isRepoBusy)
 
                         Button {
                             Task {
                                 await viewModel.stageFiles(stageSelectedTargets)
                             }
                         } label: {
-                            Label(localization.t(.stageSelected), systemImage: "plus")
+                            Label(
+                                viewModel.progressText(idle: .stageSelected, progress: .stageSelectedInProgress),
+                                systemImage: "plus"
+                            )
                         }
-                        .disabled(stageSelectedTargets.isEmpty || viewModel.isOperating)
+                        .disabled(stageSelectedTargets.isEmpty || viewModel.isRepoBusy)
 
                         Spacer()
 
                         Button {
                             Task { await viewModel.unstageAll() }
                         } label: {
-                            Label(localization.t(.unstageAll), systemImage: "minus.circle")
+                            Label(
+                                viewModel.progressText(idle: .unstageAll, progress: .unstageAllInProgress),
+                                systemImage: "minus.circle"
+                            )
                         }
-                        .disabled(stagedFiles.isEmpty || viewModel.isOperating)
+                        .disabled(stagedFiles.isEmpty || viewModel.isRepoBusy)
                     }
                     .buttonStyle(.bordered)
 
@@ -127,6 +139,7 @@ struct ChangesTabView: View {
                             RoundedRectangle(cornerRadius: 6)
                                 .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
                         )
+                        .disabled(viewModel.isRepoBusy)
 
                         HStack(spacing: 8) {
                             Button {
@@ -143,7 +156,7 @@ struct ChangesTabView: View {
                             } label: {
                                 HStack {
                                     Image(systemName: "checkmark.circle.fill")
-                                    Text(localization.t(.commit))
+                                    Text(viewModel.progressText(idle: .commit, progress: .commitInProgress))
                                 }
                                 .frame(maxWidth: .infinity)
                             }
@@ -151,7 +164,7 @@ struct ChangesTabView: View {
                             .disabled(
                                 normalizedCommitMessage.isEmpty ||
                                 commitTargetFiles.isEmpty ||
-                                viewModel.isOperating
+                                viewModel.isRepoBusy
                             )
 
                             Button {
@@ -168,7 +181,7 @@ struct ChangesTabView: View {
                             } label: {
                                 HStack {
                                     Image(systemName: "paperplane.fill")
-                                    Text(localization.t(.commitAndPush))
+                                    Text(viewModel.progressText(idle: .commitAndPush, progress: .commitAndPushInProgress))
                                 }
                                 .frame(maxWidth: .infinity)
                             }
@@ -176,7 +189,7 @@ struct ChangesTabView: View {
                             .disabled(
                                 normalizedCommitMessage.isEmpty ||
                                 commitTargetFiles.isEmpty ||
-                                viewModel.isOperating
+                                viewModel.isRepoBusy
                             )
                         }
                     }

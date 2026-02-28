@@ -54,12 +54,16 @@ struct SidebarView: View {
 
         ProjectRowView(
             projectId: project.id,
+            isSelected: viewModel.selectedProjectId == project.id,
             isExpanded: isExpanded,
             toggleExpand: {
                 viewModel.toggleProjectExpanded(project)
             }
         )
         .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.setSelectedProject(project.id)
+        }
         .onTapGesture(count: 2) {
             viewModel.toggleProjectExpanded(project)
         }
