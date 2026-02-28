@@ -1,11 +1,40 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG="${1:-Release}"
-if [[ "$CONFIG" != "Debug" && "$CONFIG" != "Release" ]]; then
-  echo "Usage: $0 [Debug|Release]" >&2
-  exit 2
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
+
+usage() {
+  cat >&2 <<'EOF'
+Usage: scripts/package_macos.sh [Debug|Release] [--install]
+
+Options:
+  --install    After packaging, replace /Applications/GitRepoManager.app
+EOF
+}
+
+CONFIG="Release"
+INSTALL_TO_APPLICATIONS=0
+
+for arg in "$@"; do
+  case "$arg" in
+    Debug|Release)
+      CONFIG="$arg"
+      ;;
+    --install)
+      INSTALL_TO_APPLICATIONS=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+done
 
 # Use full Xcode by default (xcodebuild fails if xcode-select points to CommandLineTools).
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
@@ -28,6 +57,7 @@ fi
 APP_NAME="GitRepoManager.app"
 DMG_VOL_NAME="${DMG_VOL_NAME:-GitRepoManager}"
 DMG_STAGING_DIR="${DMG_STAGING_DIR:-/tmp/grm-dmg-staging}"
+APPLICATIONS_APP="/Applications/$APP_NAME"
 
 rm -rf "$OUT_DIR/$APP_NAME" "$OUT_DIR/$ZIP_NAME" "$OUT_DIR/$DMG_NAME" "$DMG_STAGING_DIR"
 mkdir -p "$OUT_DIR"
@@ -61,7 +91,15 @@ hdiutil create \
   "$OUT_DIR/$DMG_NAME" >/dev/null
 rm -rf "$DMG_STAGING_DIR"
 
+if [[ "$INSTALL_TO_APPLICATIONS" -eq 1 ]]; then
+  rm -rf "$APPLICATIONS_APP"
+  ditto "$APP_SRC" "$APPLICATIONS_APP"
+fi
+
 echo "OK:"
 echo "  $OUT_DIR/$APP_NAME"
 echo "  $OUT_DIR/$ZIP_NAME"
 echo "  $OUT_DIR/$DMG_NAME"
+if [[ "$INSTALL_TO_APPLICATIONS" -eq 1 ]]; then
+  echo "  installed: $APPLICATIONS_APP"
+fi
