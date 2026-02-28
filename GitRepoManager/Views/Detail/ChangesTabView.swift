@@ -109,21 +109,19 @@ struct ChangesTabView: View {
                         Text(localization.t(.commitMessage))
                             .font(.headline)
 
-                        ZStack(alignment: .topLeading) {
-                            if commitMessage.isEmpty {
-                                Text(localization.t(.enterCommitMessage))
-                                    .font(.system(.body, design: .monospaced))
-                                    .foregroundColor(.secondary)
-                                    .padding(.leading, 9)
-                                    .padding(.top, 8)
-                                    .allowsHitTesting(false)
-                            }
-                            TextEditor(text: $commitMessage)
-                                .font(.system(.body, design: .monospaced))
-                                .scrollContentBackground(.hidden)
-                                .background(Color.clear)
-                        }
-                        .frame(height: 80)
+                        TextField(
+                            "",
+                            text: $commitMessage,
+                            prompt: Text(localization.t(.enterCommitMessage))
+                                .foregroundColor(.secondary),
+                            axis: .vertical
+                        )
+                        .font(.system(.body, design: .monospaced))
+                        .textFieldStyle(.plain)
+                        .lineLimit(3...4)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .frame(minHeight: 80, alignment: .topLeading)
                         .background(Color(NSColor.textBackgroundColor))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6)

@@ -14,7 +14,6 @@ class MainViewModel: ObservableObject {
 
     private let persistence = PersistenceService.shared
     private let scanner = ProjectScanner()
-    private let gitService = GitService()
     private let l10n = AppLocalization.shared
 
     private var refreshingRepositoryIDs: Set<UUID> = []
@@ -51,9 +50,7 @@ class MainViewModel: ObservableObject {
                 projects[projectIndex].repositories = repos
                 projects[projectIndex].lastScannedAt = Date()
 
-                for repo in repos {
-                    await refreshRepository(repo)
-                }
+                await refreshRepositories(repos)
             } catch {
                 print("扫描项目失败: \(error)")
             }
@@ -82,9 +79,7 @@ class MainViewModel: ObservableObject {
             }
             saveProjects()
 
-            for repo in project.repositories {
-                await refreshRepository(repo)
-            }
+            await refreshRepositories(project.repositories)
         } catch {
             showError(l10n.scanRepositoriesFailed(error.localizedDescription))
         }
@@ -131,17 +126,12 @@ class MainViewModel: ObservableObject {
         }
 
         let repos = projects.flatMap(\.repositories)
-        for repo in repos {
-            await refreshRepository(repo)
-        }
+        await refreshRepositories(repos)
     }
 
     func refreshDefaultProject() async {
         guard let project = defaultProject else { return }
-        let repos = project.repositories
-        for repo in repos {
-            await refreshRepository(repo)
-        }
+        await refreshRepositories(project.repositories)
     }
 
     func quickCommitAndPushModifiedFiles(repositoryId: UUID, message: String) async -> Bool {
@@ -173,6 +163,7 @@ class MainViewModel: ObservableObject {
         }
 
         do {
+            let gitService = GitService()
             let latestStatus = try await gitService.getStatus(in: repository.path)
             let modifiedPaths = latestStatus.modifiedFiles
                 .filter { $0.status != .conflicted }
@@ -225,6 +216,7 @@ class MainViewModel: ObservableObject {
         }
 
         do {
+            let gitService = GitService()
             let status = try await gitService.getStatus(in: repository.path)
             mutateRepository(projectId: repository.parentProjectId, repoId: repository.id) {
                 $0.status = status
@@ -303,6 +295,16 @@ class MainViewModel: ObservableObject {
     private func showError(_ message: String) {
         errorMessage = message
         showingError = true
+    }
+
+    private func refreshRepositories(_ repos: [GitRepository]) async {
+        await withTaskGroup(of: Void.self) { group in
+            for repo in repos {
+                group.addTask { @MainActor in
+                    await self.refreshRepository(repo)
+                }
+            }
+        }
     }
 
     private func normalizeDefaultProjectSelection() {
