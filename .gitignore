@@ -6,15 +6,15 @@
 .claude/
 
 # SwiftPM / Xcode build outputs
-GitRepoManager/.build/
-GitRepoManager/GitRepoManager.app/
-GitRepoManager/release/
-GitRepoManager/DerivedData/
-GitRepoManager/.swiftpm/
+.build/
+GitRepoManager.app/
+release/
+DerivedData/
+.swiftpm/
 
 # Xcode user-specific files
-GitRepoManager/GitRepoManager.xcodeproj/xcuserdata/
-GitRepoManager/GitRepoManager.xcodeproj/project.xcworkspace/xcuserdata/
+GitRepoManager.xcodeproj/xcuserdata/
+GitRepoManager.xcodeproj/project.xcworkspace/xcuserdata/
 
 # Temp logs
 *.log
