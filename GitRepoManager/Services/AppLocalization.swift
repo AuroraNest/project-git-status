@@ -34,6 +34,14 @@ enum LocalizedKey: Hashable {
     case gitRepositoryManager
     case rescan
     case removeProject
+    case pinProject
+    case unpinProject
+    case editProjectNote
+    case projectNote
+    case notePlaceholder
+    case save
+    case pinnedProjects
+    case otherProjects
     case showInFinder
     case openInTerminal
     case refreshStatus
@@ -552,6 +560,14 @@ final class AppLocalization: ObservableObject {
             .gitRepositoryManager: "Git 仓库管理",
             .rescan: "重新扫描",
             .removeProject: "移除项目",
+            .pinProject: "置顶项目",
+            .unpinProject: "取消置顶",
+            .editProjectNote: "编辑备注",
+            .projectNote: "项目备注",
+            .notePlaceholder: "输入备注...",
+            .save: "保存",
+            .pinnedProjects: "已置顶",
+            .otherProjects: "其他项目",
             .showInFinder: "在 Finder 中显示",
             .openInTerminal: "在终端中打开",
             .refreshStatus: "刷新状态",
@@ -694,6 +710,14 @@ final class AppLocalization: ObservableObject {
             .gitRepositoryManager: "Git Repository Manager",
             .rescan: "Rescan",
             .removeProject: "Remove Project",
+            .pinProject: "Pin Project",
+            .unpinProject: "Unpin Project",
+            .editProjectNote: "Edit Note",
+            .projectNote: "Project Note",
+            .notePlaceholder: "Enter note...",
+            .save: "Save",
+            .pinnedProjects: "Pinned",
+            .otherProjects: "Others",
             .showInFinder: "Show in Finder",
             .openInTerminal: "Open in Terminal",
             .refreshStatus: "Refresh Status",

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ProjectRowView: View {
     let projectId: UUID
+    let isExpanded: Bool
+    let toggleExpand: () -> Void
     @EnvironmentObject var viewModel: MainViewModel
     @EnvironmentObject var localization: AppLocalization
 
@@ -24,9 +26,19 @@ struct ProjectRowView: View {
     var body: some View {
         let projectName = project?.name ?? ""
         let repositoryCount = project?.repositories.count ?? 0
+        let projectNote = project?.note ?? ""
+        let isPinned = project?.isPinned ?? false
 
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 8) {
+                Button(action: toggleExpand) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 12, alignment: .center)
+                }
+                .buttonStyle(.plain)
+
                 Image(systemName: "folder.fill")
                     .foregroundColor(.accentColor)
                     .frame(width: 16, alignment: .leading)
@@ -34,6 +46,12 @@ struct ProjectRowView: View {
                 Text(projectName)
                     .font(.headline)
                     .lineLimit(1)
+
+                if isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.caption)
+                        .foregroundColor(.yellow)
+                }
 
                 Spacer()
 
@@ -50,7 +68,15 @@ struct ProjectRowView: View {
             Text(localization.repositoriesCount(repositoryCount))
                 .font(.caption)
                 .foregroundColor(.secondary)
-                .padding(.leading, 24)
+                .padding(.leading, 36)
+
+            if !projectNote.isEmpty {
+                Text(projectNote)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .padding(.leading, 36)
+            }
         }
         .padding(.vertical, 2)
     }
