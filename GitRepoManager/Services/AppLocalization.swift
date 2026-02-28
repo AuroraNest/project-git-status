@@ -45,6 +45,14 @@ enum LocalizedKey: Hashable {
     case pullHelp
     case push
     case pushHelp
+    case sync
+    case syncHelp
+    case dangerActions
+    case dangerActionsHelp
+    case forcePullOverwriteLocal
+    case forcePushOverwriteRemote
+    case continueConfirm
+    case finalConfirm
     case loading
     case noDiffContent
     case inputGitCommand
@@ -124,6 +132,9 @@ enum LocalizedKey: Hashable {
     case commitSuccessButPushFailed
     case pullSuccess
     case pushSuccess
+    case noTrackingBranch
+    case forcePullOverwriteLocalSuccess
+    case forcePushOverwriteRemoteSuccess
     case scanRepositoriesFailed
     case enterCommitLogMessage
     case targetRepositoryNotFound
@@ -330,6 +341,169 @@ final class AppLocalization: ObservableObject {
         }
     }
 
+    func pullAlreadyUpToDateSummary() -> String {
+        switch language {
+        case .chinese:
+            return "已是最新，无需拉取"
+        case .english:
+            return "Already up to date"
+        }
+    }
+
+    func pullUpdatedSummary(range: String?, fileCount: Int?, insertions: Int?, deletions: Int?) -> String {
+        let prefix: String
+        switch language {
+        case .chinese:
+            if let range, !range.isEmpty {
+                prefix = "已拉取更新 \(range)"
+            } else {
+                prefix = "拉取成功"
+            }
+        case .english:
+            if let range, !range.isEmpty {
+                prefix = "Pulled updates \(range)"
+            } else {
+                prefix = "Pull succeeded"
+            }
+        }
+
+        var details: [String] = []
+
+        if let fileCount, fileCount > 0 {
+            switch language {
+            case .chinese:
+                details.append("\(fileCount) 个文件")
+            case .english:
+                details.append("\(fileCount) files")
+            }
+        }
+
+        if let insertions, insertions > 0 {
+            switch language {
+            case .chinese:
+                details.append("+\(insertions)")
+            case .english:
+                details.append("+\(insertions)")
+            }
+        }
+
+        if let deletions, deletions > 0 {
+            switch language {
+            case .chinese:
+                details.append("-\(deletions)")
+            case .english:
+                details.append("-\(deletions)")
+            }
+        }
+
+        guard !details.isEmpty else { return prefix }
+
+        switch language {
+        case .chinese:
+            return "\(prefix)，" + details.joined(separator: " / ")
+        case .english:
+            return "\(prefix): " + details.joined(separator: " / ")
+        }
+    }
+
+    func syncCompletedSummary(_ pullMessage: String) -> String {
+        switch language {
+        case .chinese:
+            return "同步完成：\(pullMessage)"
+        case .english:
+            return "Sync completed: \(pullMessage)"
+        }
+    }
+
+    func syncPullSucceededButPushFailed(_ pullMessage: String) -> String {
+        switch language {
+        case .chinese:
+            return "已完成拉取：\(pullMessage)，但推送失败"
+        case .english:
+            return "Pull completed: \(pullMessage), but push failed"
+        }
+    }
+
+    func forcePullOverwriteLocalFirstConfirm(repoName: String, branch: String) -> String {
+        switch language {
+        case .chinese:
+            return """
+            这会先获取远程更新，再用远程跟踪分支强制覆盖本地仓库。
+            仓库：\(repoName)
+            分支：\(branch)
+            
+            本地未提交更改和未跟踪文件会被直接丢弃。
+            """
+        case .english:
+            return """
+            This will fetch remote updates and then force the local repository to match its upstream branch.
+            Repository: \(repoName)
+            Branch: \(branch)
+            
+            Local uncommitted changes and untracked files will be discarded.
+            """
+        }
+    }
+
+    func forcePullOverwriteLocalFinalConfirm(repoName: String, branch: String) -> String {
+        switch language {
+        case .chinese:
+            return """
+            请再次确认：
+            立即覆盖仓库 \(repoName) 的本地分支 \(branch)。
+            
+            此操作不可撤销。
+            """
+        case .english:
+            return """
+            Confirm again:
+            Overwrite local branch \(branch) in repository \(repoName) now.
+            
+            This action cannot be undone.
+            """
+        }
+    }
+
+    func forcePushOverwriteRemoteFirstConfirm(repoName: String, branch: String) -> String {
+        switch language {
+        case .chinese:
+            return """
+            这会用本地当前分支强制覆盖远程跟踪分支。
+            仓库：\(repoName)
+            分支：\(branch)
+            
+            远端已有提交可能会被直接改写。
+            """
+        case .english:
+            return """
+            This will force-push the current local branch over its upstream branch.
+            Repository: \(repoName)
+            Branch: \(branch)
+            
+            Existing commits on the remote may be rewritten.
+            """
+        }
+    }
+
+    func forcePushOverwriteRemoteFinalConfirm(repoName: String, branch: String) -> String {
+        switch language {
+        case .chinese:
+            return """
+            请再次确认：
+            立即用本地分支 \(branch) 强制覆盖仓库 \(repoName) 的远端分支。
+            
+            此操作风险很高，不可撤销。
+            """
+        case .english:
+            return """
+            Confirm again:
+            Force-push local branch \(branch) to overwrite the remote branch in repository \(repoName).
+            
+            This is a high-risk action and cannot be undone.
+            """
+        }
+    }
+
     func fileStatusDisplayName(_ status: FileStatus) -> String {
         switch status {
         case .modified:
@@ -389,6 +563,14 @@ final class AppLocalization: ObservableObject {
             .pullHelp: "从远程拉取更新",
             .push: "推送",
             .pushHelp: "推送到远程",
+            .sync: "同步",
+            .syncHelp: "先拉取，再推送",
+            .dangerActions: "危险操作",
+            .dangerActionsHelp: "高风险 Git 操作，需要双重确认",
+            .forcePullOverwriteLocal: "覆盖本地拉取",
+            .forcePushOverwriteRemote: "覆盖云端推送",
+            .continueConfirm: "继续确认",
+            .finalConfirm: "最终确认",
             .loading: "加载中...",
             .noDiffContent: "没有差异内容",
             .inputGitCommand: "输入 git 命令...",
@@ -468,6 +650,9 @@ final class AppLocalization: ObservableObject {
             .commitSuccessButPushFailed: "提交成功，但推送失败",
             .pullSuccess: "拉取成功",
             .pushSuccess: "推送成功",
+            .noTrackingBranch: "当前分支没有跟踪远程分支",
+            .forcePullOverwriteLocalSuccess: "已用远程强制覆盖本地",
+            .forcePushOverwriteRemoteSuccess: "已强制覆盖远程分支",
             .scanRepositoriesFailed: "扫描仓库失败",
             .enterCommitLogMessage: "请输入提交日志",
             .targetRepositoryNotFound: "未找到目标仓库",
@@ -520,6 +705,14 @@ final class AppLocalization: ObservableObject {
             .pullHelp: "Pull updates from remote",
             .push: "Push",
             .pushHelp: "Push to remote",
+            .sync: "Sync",
+            .syncHelp: "Pull first, then push",
+            .dangerActions: "Danger",
+            .dangerActionsHelp: "High-risk Git actions that require double confirmation",
+            .forcePullOverwriteLocal: "Force Pull Overwrite Local",
+            .forcePushOverwriteRemote: "Force Push Overwrite Remote",
+            .continueConfirm: "Continue",
+            .finalConfirm: "Confirm",
             .loading: "Loading...",
             .noDiffContent: "No diff content",
             .inputGitCommand: "Enter a git command...",
@@ -599,6 +792,9 @@ final class AppLocalization: ObservableObject {
             .commitSuccessButPushFailed: "Commit succeeded, but push failed",
             .pullSuccess: "Pull succeeded",
             .pushSuccess: "Push succeeded",
+            .noTrackingBranch: "The current branch has no upstream branch",
+            .forcePullOverwriteLocalSuccess: "Local branch overwritten from upstream",
+            .forcePushOverwriteRemoteSuccess: "Remote branch overwritten",
             .scanRepositoriesFailed: "Failed to scan repositories",
             .enterCommitLogMessage: "Please enter a commit log",
             .targetRepositoryNotFound: "Target repository not found",

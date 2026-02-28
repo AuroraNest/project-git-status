@@ -72,14 +72,18 @@ struct RepositoryDetailView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
                     Text(message)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding()
                 .background(.regularMaterial)
                 .cornerRadius(8)
                 .padding()
+                .frame(maxWidth: 520)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    let dismissDelay = message.count > 24 ? 4.0 : 2.0
+                    DispatchQueue.main.asyncAfter(deadline: .now() + dismissDelay) {
                         withAnimation {
                             viewModel.clearMessages()
                         }
@@ -113,6 +117,15 @@ struct RepositoryHeaderView: View {
     @EnvironmentObject var localization: AppLocalization
     let repository: GitRepository
     @ObservedObject var viewModel: RepositoryViewModel
+    @State private var stagedDangerAction: DangerAction?
+    @State private var finalDangerAction: DangerAction?
+
+    private enum DangerAction: String, Identifiable {
+        case forcePullOverwriteLocal
+        case forcePushOverwriteRemote
+
+        var id: String { rawValue }
+    }
 
     var body: some View {
         HStack {
@@ -146,6 +159,14 @@ struct RepositoryHeaderView: View {
             // 快速操作按钮
             HStack(spacing: 12) {
                 Button {
+                    Task { await viewModel.sync() }
+                } label: {
+                    Label(localization.t(.sync), systemImage: "arrow.triangle.2.circlepath")
+                }
+                .disabled(viewModel.isOperating)
+                .help(localization.t(.syncHelp))
+
+                Button {
                     Task { await viewModel.pull() }
                 } label: {
                     Label(localization.t(.pull), systemImage: "arrow.down.circle")
@@ -168,9 +189,142 @@ struct RepositoryHeaderView: View {
                 }
                 .disabled(viewModel.isLoading)
                 .help(localization.t(.refreshStatus))
+
+                Menu {
+                    Button(role: .destructive) {
+                        stagedDangerAction = .forcePullOverwriteLocal
+                    } label: {
+                        Label(localization.t(.forcePullOverwriteLocal), systemImage: "arrow.down.circle.fill")
+                    }
+
+                    Button(role: .destructive) {
+                        stagedDangerAction = .forcePushOverwriteRemote
+                    } label: {
+                        Label(localization.t(.forcePushOverwriteRemote), systemImage: "arrow.up.circle.fill")
+                    }
+                } label: {
+                    Label(localization.t(.dangerActions), systemImage: "exclamationmark.triangle")
+                }
+                .tint(.orange)
+                .disabled(viewModel.isLoading || viewModel.isOperating)
+                .help(localization.t(.dangerActionsHelp))
             }
             .buttonStyle(.bordered)
         }
         .padding()
+        .confirmationDialog(
+            localization.t(.dangerActions),
+            isPresented: dangerDialogBinding,
+            titleVisibility: .visible
+        ) {
+            Button(localization.t(.continueConfirm), role: .destructive) {
+                finalDangerAction = stagedDangerAction
+                stagedDangerAction = nil
+            }
+            Button(localization.t(.cancel), role: .cancel) {
+                stagedDangerAction = nil
+            }
+        } message: {
+            Text(firstConfirmationMessage)
+        }
+        .alert(
+            finalConfirmationTitle,
+            isPresented: finalDangerAlertBinding
+        ) {
+            Button(localization.t(.finalConfirm), role: .destructive) {
+                let action = finalDangerAction
+                finalDangerAction = nil
+                runDangerAction(action)
+            }
+            Button(localization.t(.cancel), role: .cancel) {
+                finalDangerAction = nil
+            }
+        } message: {
+            Text(finalConfirmationMessage)
+        }
+    }
+
+    private var currentBranch: String {
+        viewModel.status?.currentBranch ?? repository.status?.currentBranch ?? "HEAD"
+    }
+
+    private var dangerDialogBinding: Binding<Bool> {
+        Binding(
+            get: { stagedDangerAction != nil },
+            set: { newValue in
+                if !newValue {
+                    stagedDangerAction = nil
+                }
+            }
+        )
+    }
+
+    private var finalDangerAlertBinding: Binding<Bool> {
+        Binding(
+            get: { finalDangerAction != nil },
+            set: { newValue in
+                if !newValue {
+                    finalDangerAction = nil
+                }
+            }
+        )
+    }
+
+    private var firstConfirmationMessage: String {
+        guard let action = stagedDangerAction else { return "" }
+
+        switch action {
+        case .forcePullOverwriteLocal:
+            return localization.forcePullOverwriteLocalFirstConfirm(
+                repoName: repository.name,
+                branch: currentBranch
+            )
+        case .forcePushOverwriteRemote:
+            return localization.forcePushOverwriteRemoteFirstConfirm(
+                repoName: repository.name,
+                branch: currentBranch
+            )
+        }
+    }
+
+    private var finalConfirmationTitle: String {
+        guard let action = finalDangerAction else { return localization.t(.dangerActions) }
+
+        switch action {
+        case .forcePullOverwriteLocal:
+            return localization.t(.forcePullOverwriteLocal)
+        case .forcePushOverwriteRemote:
+            return localization.t(.forcePushOverwriteRemote)
+        }
+    }
+
+    private var finalConfirmationMessage: String {
+        guard let action = finalDangerAction else { return "" }
+
+        switch action {
+        case .forcePullOverwriteLocal:
+            return localization.forcePullOverwriteLocalFinalConfirm(
+                repoName: repository.name,
+                branch: currentBranch
+            )
+        case .forcePushOverwriteRemote:
+            return localization.forcePushOverwriteRemoteFinalConfirm(
+                repoName: repository.name,
+                branch: currentBranch
+            )
+        }
+    }
+
+    private func runDangerAction(_ action: DangerAction?) {
+        guard let action else { return }
+
+        Task {
+            switch action {
+            case .forcePullOverwriteLocal:
+                await viewModel.forcePullOverwritingLocal()
+            case .forcePushOverwriteRemote:
+                await viewModel.forcePushOverwritingRemote()
+            }
+        }
     }
 }

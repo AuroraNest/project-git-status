@@ -227,9 +227,19 @@ class RepositoryViewModel: ObservableObject {
         defer { isOperating = false }
 
         do {
-            try await gitService.pull(in: repository.path)
+            let summary = try await gitService.pull(in: repository.path)
             await loadStatus()
-            operationMessage = l10n.t(.pullSuccess)
+            if summary.isAlreadyUpToDate {
+                operationMessage = l10n.pullAlreadyUpToDateSummary()
+            } else {
+                operationMessage = l10n.pullUpdatedSummary(
+                    range: summary.commitRange,
+                    fileCount: summary.changedFilesCount,
+                    insertions: summary.insertions,
+                    deletions: summary.deletions
+                )
+            }
+            lastError = nil
         } catch {
             lastError = error.localizedDescription
         }
@@ -243,6 +253,67 @@ class RepositoryViewModel: ObservableObject {
             try await gitService.push(in: repository.path)
             await loadStatus()
             operationMessage = l10n.t(.pushSuccess)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func sync() async {
+        isOperating = true
+        defer { isOperating = false }
+
+        do {
+            let summary = try await gitService.pull(in: repository.path)
+            let pullMessage: String
+            if summary.isAlreadyUpToDate {
+                pullMessage = l10n.pullAlreadyUpToDateSummary()
+            } else {
+                pullMessage = l10n.pullUpdatedSummary(
+                    range: summary.commitRange,
+                    fileCount: summary.changedFilesCount,
+                    insertions: summary.insertions,
+                    deletions: summary.deletions
+                )
+            }
+
+            do {
+                try await gitService.push(in: repository.path)
+                await loadStatus()
+                operationMessage = l10n.syncCompletedSummary(pullMessage)
+                lastError = nil
+            } catch {
+                await loadStatus()
+                operationMessage = l10n.syncPullSucceededButPushFailed(pullMessage)
+                lastError = error.localizedDescription
+            }
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func forcePullOverwritingLocal() async {
+        isOperating = true
+        defer { isOperating = false }
+
+        do {
+            try await gitService.forcePullOverwritingLocal(in: repository.path)
+            await loadStatus()
+            operationMessage = l10n.t(.forcePullOverwriteLocalSuccess)
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func forcePushOverwritingRemote() async {
+        isOperating = true
+        defer { isOperating = false }
+
+        do {
+            try await gitService.forcePushOverwritingRemote(in: repository.path)
+            await loadStatus()
+            operationMessage = l10n.t(.forcePushOverwriteRemoteSuccess)
+            lastError = nil
         } catch {
             lastError = error.localizedDescription
         }

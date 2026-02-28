@@ -10,6 +10,14 @@ actor GitService {
         let behindCount: Int
     }
 
+    struct PullSummary {
+        let isAlreadyUpToDate: Bool
+        let commitRange: String?
+        let changedFilesCount: Int?
+        let insertions: Int?
+        let deletions: Int?
+    }
+
     // MARK: - 状态查询
 
     /// 获取仓库状态
@@ -402,11 +410,56 @@ actor GitService {
     // MARK: - 远程操作
 
     /// 拉取
-    func pull(in directory: String) async throws {
-        _ = try await runner.execute(
-            ["pull"],
+    func pull(in directory: String) async throws -> PullSummary {
+        let result = try await runner.run(
+            ["-c", "core.quotepath=false", "pull", "--stat", "--no-progress"],
             in: directory,
             timeout: 90.0
+        )
+
+        guard result.isSuccess else {
+            try throwCommandError(from: result)
+        }
+
+        let combinedOutput = [result.output, result.error]
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: "\n")
+
+        return parsePullSummary(combinedOutput)
+    }
+
+    func getCurrentUpstream(in directory: String) async throws -> String {
+        do {
+            return try await runner.execute(
+                ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
+                in: directory,
+                timeout: 15.0
+            )
+        } catch {
+            if let gitError = error as? GitError,
+               case .commandFailed = gitError {
+                throw GitError.commandFailed(AppLocalization.shared.t(.noTrackingBranch))
+            }
+            throw error
+        }
+    }
+
+    func forcePullOverwritingLocal(in directory: String) async throws {
+        let upstream = try await getCurrentUpstream(in: directory)
+        _ = try await runner.execute(
+            ["fetch", "--all", "--prune"],
+            in: directory,
+            timeout: 90.0
+        )
+        _ = try await runner.execute(
+            ["reset", "--hard", upstream],
+            in: directory,
+            timeout: 30.0
+        )
+        _ = try await runner.execute(
+            ["clean", "-fd"],
+            in: directory,
+            timeout: 30.0
         )
     }
 
@@ -419,6 +472,23 @@ actor GitService {
         )
     }
 
+    func forcePushOverwritingRemote(in directory: String) async throws {
+        let upstream = try await getCurrentUpstream(in: directory)
+        let components = upstream.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false)
+        guard components.count == 2 else {
+            throw GitError.commandFailed(AppLocalization.shared.t(.noTrackingBranch))
+        }
+
+        let remote = String(components[0])
+        let remoteBranch = String(components[1])
+
+        _ = try await runner.execute(
+            ["push", "--force", remote, "HEAD:\(remoteBranch)"],
+            in: directory,
+            timeout: 90.0
+        )
+    }
+
     /// 获取远程更新
     func fetch(in directory: String) async throws {
         _ = try await runner.execute(
@@ -426,6 +496,105 @@ actor GitService {
             in: directory,
             timeout: 90.0
         )
+    }
+
+    private func throwCommandError(from result: CommandResult) throws -> Never {
+        let error = result.error.lowercased()
+        if error.contains("not a git repository") {
+            throw GitError.notAGitRepository
+        } else if error.contains("conflict") || error.contains("merge") {
+            throw GitError.mergeConflict
+        } else if error.contains("could not resolve host") || error.contains("network") {
+            throw GitError.networkError(result.error)
+        } else {
+            throw GitError.commandFailed(result.error.isEmpty ? result.output : result.error)
+        }
+    }
+
+    private func parsePullSummary(_ output: String) -> PullSummary {
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return PullSummary(
+                isAlreadyUpToDate: false,
+                commitRange: nil,
+                changedFilesCount: nil,
+                insertions: nil,
+                deletions: nil
+            )
+        }
+
+        let lines = trimmed
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        let isAlreadyUpToDate = lines.contains { $0 == "Already up to date." }
+
+        var commitRange: String?
+        var changedFilesCount: Int?
+        var insertions: Int?
+        var deletions: Int?
+
+        for line in lines {
+            if commitRange == nil,
+               let range = firstRegexCapture(
+                pattern: #"Updating ([0-9a-fA-F]+)\.\.([0-9a-fA-F]+)"#,
+                in: line,
+                joinWith: ".."
+               ) {
+                commitRange = range
+            }
+
+            if changedFilesCount == nil,
+               let match = regexMatches(
+                pattern: #"(\d+) files? changed(?:, (\d+) insertions?\(\+\))?(?:, (\d+) deletions?\(-\))?"#,
+                in: line
+               ) {
+                changedFilesCount = Int(match[0])
+                if match.count > 1, !match[1].isEmpty {
+                    insertions = Int(match[1])
+                }
+                if match.count > 2, !match[2].isEmpty {
+                    deletions = Int(match[2])
+                }
+            }
+        }
+
+        return PullSummary(
+            isAlreadyUpToDate: isAlreadyUpToDate,
+            commitRange: commitRange,
+            changedFilesCount: changedFilesCount,
+            insertions: insertions,
+            deletions: deletions
+        )
+    }
+
+    private func firstRegexCapture(pattern: String, in text: String, joinWith separator: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let nsrange = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, range: nsrange),
+              match.numberOfRanges >= 3,
+              let firstRange = Range(match.range(at: 1), in: text),
+              let secondRange = Range(match.range(at: 2), in: text) else {
+            return nil
+        }
+        return "\(text[firstRange])\(separator)\(text[secondRange])"
+    }
+
+    private func regexMatches(pattern: String, in text: String) -> [String]? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let nsrange = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, range: nsrange), match.numberOfRanges > 1 else {
+            return nil
+        }
+
+        return (1..<match.numberOfRanges).map { index in
+            let range = match.range(at: index)
+            guard range.location != NSNotFound, let swiftRange = Range(range, in: text) else {
+                return ""
+            }
+            return String(text[swiftRange])
+        }
     }
 
     // MARK: - Diff
