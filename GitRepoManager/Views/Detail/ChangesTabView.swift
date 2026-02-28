@@ -42,6 +42,7 @@ struct ChangesTabView: View {
             VStack(spacing: 0) {
                 // 文件列表
                 FileListView(
+                    viewModel: viewModel,
                     stagedFiles: stagedFiles,
                     modifiedFiles: modifiedFiles,
                     untrackedFiles: untrackedFiles,
