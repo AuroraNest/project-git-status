@@ -1,8 +1,10 @@
 import SwiftUI
 
 struct MainView: View {
+    @Environment(\.openWindow) private var openWindow
     @EnvironmentObject var viewModel: MainViewModel
     @EnvironmentObject var localization: AppLocalization
+    @EnvironmentObject var statusBarController: StatusBarController
     @State private var columnVisibility = NavigationSplitViewVisibility.all
 
     var selectedRepository: GitRepository? {
@@ -103,6 +105,11 @@ struct MainView: View {
                     .padding()
                     .background(.regularMaterial)
                     .cornerRadius(8)
+            }
+        }
+        .onAppear {
+            statusBarController.setMainWindowOpener {
+                openWindow(id: "main")
             }
         }
     }

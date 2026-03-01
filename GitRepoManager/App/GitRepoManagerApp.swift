@@ -12,6 +12,7 @@ struct GitRepoManagerApp: App {
             MainView()
                 .environmentObject(mainViewModel)
                 .environmentObject(localization)
+                .environmentObject(statusBarController)
                 .frame(minWidth: 900, minHeight: 600)
                 .onAppear {
                     statusBarController.configure(with: mainViewModel, localization: localization)
@@ -45,6 +46,11 @@ struct GitRepoManagerApp: App {
 final class StatusBarController: ObservableObject {
     private var statusItem: NSStatusItem?
     private let popover = NSPopover()
+    private var openMainWindowById: (() -> Void)?
+
+    func setMainWindowOpener(_ opener: @escaping () -> Void) {
+        openMainWindowById = opener
+    }
 
     func configure(with viewModel: MainViewModel, localization: AppLocalization) {
         if statusItem == nil {
@@ -93,10 +99,54 @@ final class StatusBarController: ObservableObject {
     }
 
     private func openMainWindow() {
+        let currentPopoverWindow = popover.contentViewController?.view.window
         popover.performClose(nil)
+
+        // 激活应用
         NSApp.activate(ignoringOtherApps: true)
-        if let window = NSApp.windows.first(where: { $0.isVisible }) ?? NSApp.windows.first {
-            window.makeKeyAndOrderFront(nil)
+
+        // 查找主窗口
+        for window in NSApp.windows {
+            // 跳过当前菜单栏弹窗窗口，避免误判为“主窗口”
+            if let currentPopoverWindow, window == currentPopoverWindow {
+                continue
+            }
+
+            // 跳过菜单栏面板和其他系统窗口
+            if window.className.contains("NSStatusBar") ||
+               window.className.contains("NSPopover") ||
+               window.className.contains("MenuBarExtra") {
+                continue
+            }
+
+            // 仅命中可前置的主窗口，避免把已关闭/隐藏的残留窗口误判为主窗口
+            let isUsableMainWindow =
+                window.contentView != nil &&
+                !window.isSheet &&
+                window.canBecomeMain &&
+                (window.isVisible || window.isMiniaturized)
+            if isUsableMainWindow {
+                if window.isMiniaturized {
+                    window.deminiaturize(nil)
+                }
+                window.makeKeyAndOrderFront(nil)
+                return
+            }
+        }
+
+        // 如果主窗口都被关闭了，显式请求 SwiftUI 重新打开主窗口
+        openMainWindowById?()
+
+        // 兼容旧路径：继续尝试系统级前置动作
+        NSApp.sendAction(#selector(NSWindow.makeKeyAndOrderFront(_:)), to: nil, from: nil)
+
+        // 最后尝试：点击 Dock 图标效果
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            if NSApp.windows.filter({ $0.isVisible && $0.contentView != nil }).isEmpty {
+                self?.openMainWindowById?()
+                // 重新启动应用窗口
+                NSApp.setActivationPolicy(.regular)
+            }
         }
     }
 }
@@ -172,6 +222,16 @@ struct MenuBarPanelView: View {
                 Label(localization.t(.gitQuickPanel), systemImage: "bolt.circle")
                     .font(.headline)
                 Spacer()
+
+                Button {
+                    openMainWindow()
+                } label: {
+                    Image(systemName: "macwindow")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(localization.t(.viewDetails))
+
                 Button {
                     closePanel()
                 } label: {

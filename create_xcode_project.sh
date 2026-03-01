@@ -48,6 +48,7 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 		026 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126; };
 		027 /* GitCommit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127; };
 		028 /* CommitRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128; };
+		029 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 129; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -80,6 +81,7 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 		126 /* AppLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalization.swift; sourceTree = "<group>"; };
 		127 /* GitCommit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitCommit.swift; sourceTree = "<group>"; };
 		128 /* CommitRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommitRowView.swift; sourceTree = "<group>"; };
+		129 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -99,6 +101,7 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 				212 /* Services */,
 				213 /* ViewModels */,
 				214 /* Views */,
+				219 /* Resources */,
 			);
 			path = GitRepoManager;
 			sourceTree = "<group>";
@@ -206,6 +209,14 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 			path = Components;
 			sourceTree = "<group>";
 		};
+		219 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				129 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -215,6 +226,7 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 			buildPhases = (
 				301 /* Sources */,
 				302 /* Frameworks */,
+				303 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -296,6 +308,17 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 		};
 /* End PBXFrameworksBuildPhase section */
 
+/* Begin PBXResourcesBuildPhase section */
+		303 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				029 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin XCBuildConfiguration section */
 		600 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -360,6 +383,7 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -387,6 +411,7 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
