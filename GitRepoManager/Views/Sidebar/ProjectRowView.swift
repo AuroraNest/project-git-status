@@ -69,18 +69,20 @@ struct ProjectRowView: View {
                 }
             }
 
-            Text(localization.repositoriesCount(repositoryCount))
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.leading, 36)
-
-            if !projectNote.isEmpty {
-                Text(projectNote)
-                    .font(.caption)
+            HStack(spacing: 4) {
+                Text(localization.repositoriesCount(repositoryCount))
                     .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .padding(.leading, 36)
+
+                if !projectNote.isEmpty {
+                    Text("·")
+                        .foregroundColor(.secondary)
+                    Text(projectNote)
+                        .foregroundColor(.blue.opacity(0.7))
+                        .lineLimit(1)
+                }
             }
+            .font(.caption)
+            .padding(.leading, 36)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 2)

@@ -65,6 +65,7 @@ struct SidebarView: View {
             viewModel.setSelectedProject(project.id)
         }
         .onTapGesture(count: 2) {
+            viewModel.setSelectedProject(project.id)
             viewModel.toggleProjectExpanded(project)
         }
         .onDrag {
@@ -115,7 +116,7 @@ struct SidebarView: View {
             ForEach(project.repositories) { repo in
                 RepositoryRowView(repository: repo)
                     .tag(repo.id)
-                    .padding(.leading, 18)
+                    .padding(.leading, 46)
             }
         }
     }
