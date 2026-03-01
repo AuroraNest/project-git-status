@@ -109,6 +109,7 @@ struct MenuBarPanelView: View {
 
     @State private var selectedRepositoryId: UUID?
     @State private var commitMessage: String = ""
+    @State private var showSuccessFlash = false
     @AppStorage("menuBarChangeTipsCollapsed") private var changeTipsCollapsed = false
 
     private var defaultProject: Project? {
@@ -160,16 +161,24 @@ struct MenuBarPanelView: View {
         Array(changedTrackedFiles.map(\.path).prefix(4))
     }
 
+    private var currentBranch: String? {
+        selectedRepository?.status?.currentBranch ?? selectedRepository?.currentBranch
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // 标题栏
             HStack {
                 Label(localization.t(.gitQuickPanel), systemImage: "bolt.circle")
                     .font(.headline)
                 Spacer()
-                Button(localization.t(.closePanel)) {
+                Button {
                     closePanel()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
             }
 
             if viewModel.projects.isEmpty {
@@ -183,6 +192,7 @@ struct MenuBarPanelView: View {
                     .buttonStyle(.borderedProminent)
                 }
             } else {
+                // 默认项目选择
                 VStack(alignment: .leading, spacing: 8) {
                     Text(localization.t(.defaultProject))
                         .font(.subheadline)
@@ -200,10 +210,23 @@ struct MenuBarPanelView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 } else {
+                    // 仓库选择（带分支名）
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(localization.t(.targetRepositoryOnlyChanged))
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        HStack {
+                            Text(localization.t(.targetRepositoryOnlyChanged))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+
+                            if let branch = currentBranch {
+                                Spacer()
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.triangle.branch")
+                                    Text(branch)
+                                }
+                                .font(.caption)
+                                .foregroundColor(.accentColor)
+                            }
+                        }
 
                         if repositoriesWithChanges.isEmpty {
                             Text(localization.t(.noChangedRepositoriesRefreshFirst))
@@ -237,36 +260,93 @@ struct MenuBarPanelView: View {
                         }
                     }
 
-                    HStack(spacing: 8) {
-                        Button(localization.t(.viewDetails)) {
-                            if let selectedRepository {
-                                viewModel.setSelectedRepository(selectedRepository.id)
-                            }
-                            openMainWindow()
+                    // 操作按钮（图标样式）
+                    HStack(spacing: 6) {
+                        // 编辑器
+                        Button {
+                            guard let selectedRepository else { return }
+                            viewModel.openInIDE(selectedRepository)
+                        } label: {
+                            Image(systemName: "laptopcomputer")
                         }
                         .buttonStyle(.bordered)
+                        .help(localization.t(.openInIDE))
 
-                        Button(localization.t(.refresh)) {
+                        // Finder
+                        Button {
+                            guard let selectedRepository else { return }
+                            viewModel.openInFinder(selectedRepository)
+                        } label: {
+                            Image(systemName: "folder")
+                        }
+                        .buttonStyle(.bordered)
+                        .help(localization.t(.showInFinder))
+
+                        // 终端
+                        Button {
+                            guard let selectedRepository else { return }
+                            viewModel.openInTerminal(selectedRepository)
+                        } label: {
+                            Image(systemName: "terminal")
+                        }
+                        .buttonStyle(.bordered)
+                        .help(localization.t(.openInTerminal))
+
+                        Divider()
+                            .frame(height: 20)
+
+                        // 刷新
+                        Button {
                             guard let selectedRepository else { return }
                             Task {
                                 await viewModel.refreshRepository(selectedRepository)
                             }
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
                         }
                         .buttonStyle(.bordered)
+                        .help(localization.t(.refresh))
 
-                        Button(localization.t(.finder)) {
+                        // Pull
+                        Button {
                             guard let selectedRepository else { return }
-                            viewModel.openInFinder(selectedRepository)
+                            Task {
+                                await quickPull(selectedRepository)
+                            }
+                        } label: {
+                            Image(systemName: "arrow.down.circle")
                         }
                         .buttonStyle(.bordered)
+                        .help(localization.t(.pull))
 
-                        Button(localization.t(.terminal)) {
+                        // Push
+                        Button {
                             guard let selectedRepository else { return }
-                            viewModel.openInTerminal(selectedRepository)
+                            Task {
+                                await quickPush(selectedRepository)
+                            }
+                        } label: {
+                            Image(systemName: "arrow.up.circle")
                         }
                         .buttonStyle(.bordered)
+                        .help(localization.t(.push))
+
+                        Spacer()
+
+                        // 查看详情
+                        Button {
+                            if let selectedRepository {
+                                viewModel.setSelectedRepository(selectedRepository.id)
+                            }
+                            openMainWindow()
+                        } label: {
+                            Image(systemName: "arrow.up.right.square")
+                        }
+                        .buttonStyle(.bordered)
+                        .help(localization.t(.viewDetails))
                     }
 
+                    // 变更提示
                     if let status = selectedRepository?.status {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
@@ -341,13 +421,22 @@ struct MenuBarPanelView: View {
                             .foregroundColor(.secondary)
                     }
 
+                    // 提交区域
                     VStack(alignment: .leading, spacing: 8) {
                         Text(localization.t(.commitLogModifiedOnly))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
 
-                        TextField(localization.t(.enterCommitLog), text: $commitMessage)
-                            .textFieldStyle(.roundedBorder)
+                        TextEditor(text: $commitMessage)
+                            .font(.body)
+                            .frame(height: 50)
+                            .padding(4)
+                            .background(Color(NSColor.textBackgroundColor))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                            )
+                            .cornerRadius(6)
 
                         Button {
                             guard let selectedRepository else { return }
@@ -358,6 +447,10 @@ struct MenuBarPanelView: View {
                                 )
                                 if success {
                                     commitMessage = ""
+                                    showSuccessFlash = true
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                        showSuccessFlash = false
+                                    }
                                 }
                             }
                         } label: {
@@ -370,7 +463,17 @@ struct MenuBarPanelView: View {
                 }
             }
 
-            if let message = viewModel.menuBarMessage, !message.isEmpty {
+            // 消息反馈
+            if showSuccessFlash {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text(localization.t(.commitAndPushSuccess))
+                        .foregroundColor(.green)
+                }
+                .font(.caption)
+                .transition(.opacity)
+            } else if let message = viewModel.menuBarMessage, !message.isEmpty {
                 Text(message)
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -403,5 +506,27 @@ struct MenuBarPanelView: View {
             return
         }
         self.selectedRepositoryId = preferred ?? repositories.first?.id
+    }
+
+    private func quickPull(_ repository: GitRepository) async {
+        let gitService = GitService()
+        do {
+            _ = try await gitService.pull(in: repository.path)
+            await viewModel.refreshRepository(repository)
+            viewModel.menuBarMessage = localization.t(.pullSuccess)
+        } catch {
+            viewModel.menuBarMessage = error.localizedDescription
+        }
+    }
+
+    private func quickPush(_ repository: GitRepository) async {
+        let gitService = GitService()
+        do {
+            try await gitService.push(in: repository.path)
+            await viewModel.refreshRepository(repository)
+            viewModel.menuBarMessage = localization.t(.pushSuccess)
+        } catch {
+            viewModel.menuBarMessage = error.localizedDescription
+        }
     }
 }
