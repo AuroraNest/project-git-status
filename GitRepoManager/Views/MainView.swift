@@ -31,6 +31,26 @@ struct MainView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                // 默认编辑器选择
+                Menu {
+                    ForEach(EditorType.installedEditors) { editor in
+                        Button {
+                            viewModel.preferredEditor = editor
+                        } label: {
+                            HStack {
+                                Text(editor.displayName)
+                                if viewModel.preferredEditor == editor {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Label(localization.t(.defaultEditor), systemImage: "hammer")
+                }
+                .help(localization.t(.defaultEditor))
+
+                // 语言选择
                 Menu {
                     ForEach(AppLanguage.allCases) { language in
                         Button {
@@ -58,6 +78,7 @@ struct MainView: View {
                 }
                 .help(localization.t(.refreshAllRepositories))
                 .disabled(viewModel.isLoading)
+                .keyboardShortcut("r", modifiers: .command)
 
                 Button {
                     viewModel.showAddProjectDialog()
@@ -65,6 +86,7 @@ struct MainView: View {
                     Label(localization.t(.addProject), systemImage: "plus.circle")
                 }
                 .help(localization.t(.addProjectDirectoryHelp))
+                .keyboardShortcut("n", modifiers: .command)
             }
         }
         .sheet(isPresented: $viewModel.showingAddProject) {

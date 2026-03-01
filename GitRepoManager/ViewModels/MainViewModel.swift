@@ -12,6 +12,12 @@ class MainViewModel: ObservableObject {
     @Published var selectedProjectId: UUID?
     @Published var defaultProjectId: UUID?
     @Published var menuBarMessage: String?
+    @Published var preferredEditor: EditorType? {
+        didSet {
+            guard oldValue != preferredEditor else { return }
+            persistence.savePreferredEditor(preferredEditor)
+        }
+    }
 
     private let persistence = PersistenceService.shared
     private let scanner = ProjectScanner()
@@ -21,6 +27,7 @@ class MainViewModel: ObservableObject {
     private var isRefreshingAll = false
 
     init() {
+        preferredEditor = persistence.loadPreferredEditor()
         loadProjects()
     }
 
@@ -425,6 +432,22 @@ class MainViewModel: ObservableObject {
 
     func openInFinder(_ repository: GitRepository) {
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: repository.path)
+    }
+
+    func openInIDE(_ repository: GitRepository, editor: EditorType? = nil) {
+        let repoURL = URL(fileURLWithPath: repository.path)
+        let workspace = NSWorkspace.shared
+
+        // 使用指定的编辑器，或者用户偏好的编辑器，或者第一个已安装的编辑器
+        let targetEditor = editor ?? preferredEditor ?? EditorType.installedEditors.first
+
+        if let targetEditor, let installedPath = targetEditor.installedPath {
+            let appURL = URL(fileURLWithPath: installedPath)
+            workspace.open([repoURL], withApplicationAt: appURL, configuration: NSWorkspace.OpenConfiguration())
+        } else {
+            // 回退到 Finder
+            openInFinder(repository)
+        }
     }
 
     // MARK: - Private

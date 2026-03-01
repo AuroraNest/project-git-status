@@ -44,6 +44,8 @@ enum LocalizedKey: Hashable {
     case otherProjects
     case showInFinder
     case openInTerminal
+    case openInIDE
+    case defaultEditor
     case refreshStatus
     case changes
     case branches
@@ -589,6 +591,8 @@ final class AppLocalization: ObservableObject {
             .otherProjects: "其他项目",
             .showInFinder: "在 Finder 中显示",
             .openInTerminal: "在终端中打开",
+            .openInIDE: "在编辑器中打开",
+            .defaultEditor: "默认编辑器",
             .refreshStatus: "刷新状态",
             .changes: "变更",
             .branches: "分支",
@@ -758,6 +762,8 @@ final class AppLocalization: ObservableObject {
             .otherProjects: "Others",
             .showInFinder: "Show in Finder",
             .openInTerminal: "Open in Terminal",
+            .openInIDE: "Open in Editor",
+            .defaultEditor: "Default Editor",
             .refreshStatus: "Refresh Status",
             .changes: "Changes",
             .branches: "Branches",

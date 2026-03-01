@@ -85,6 +85,24 @@ struct RepositoryRowView: View {
         }
         .padding(.vertical, 4)
         .contextMenu {
+            // 打开方式子菜单
+            Menu {
+                ForEach(EditorType.installedEditors) { editor in
+                    Button {
+                        viewModel.openInIDE(repository, editor: editor)
+                    } label: {
+                        HStack {
+                            Text(editor.displayName)
+                            if viewModel.preferredEditor == editor {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Label(localization.t(.openInIDE), systemImage: "laptopcomputer")
+            }
+
             Button {
                 viewModel.openInFinder(repository)
             } label: {

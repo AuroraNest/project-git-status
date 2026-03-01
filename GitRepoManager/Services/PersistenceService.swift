@@ -1,5 +1,70 @@
 import Foundation
 
+/// 编辑器类型
+enum EditorType: String, Codable, CaseIterable, Identifiable {
+    case vscode = "vscode"
+    case cursor = "cursor"
+    case xcode = "xcode"
+    case idea = "idea"
+    case pycharm = "pycharm"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .vscode: return "VS Code"
+        case .cursor: return "Cursor"
+        case .xcode: return "Xcode"
+        case .idea: return "IntelliJ IDEA"
+        case .pycharm: return "PyCharm"
+        }
+    }
+
+    var appPath: String {
+        switch self {
+        case .vscode: return "/Applications/Visual Studio Code.app"
+        case .cursor: return "/Applications/Cursor.app"
+        case .xcode: return "/Applications/Xcode.app"
+        case .idea: return "/Applications/IntelliJ IDEA.app"
+        case .pycharm: return "/Applications/PyCharm.app"
+        }
+    }
+
+    // 有些 IDE 有多个可能的路径
+    var alternatePaths: [String] {
+        switch self {
+        case .pycharm: return [
+            "/Applications/PyCharm.app",
+            "/Applications/PyCharm CE.app",
+            "/Applications/PyCharm Professional.app"
+        ]
+        case .idea: return [
+            "/Applications/IntelliJ IDEA.app",
+            "/Applications/IntelliJ IDEA CE.app",
+            "/Applications/IntelliJ IDEA Ultimate.app"
+        ]
+        default: return [appPath]
+        }
+    }
+
+    var installedPath: String? {
+        for path in alternatePaths {
+            if FileManager.default.fileExists(atPath: path) {
+                return path
+            }
+        }
+        return nil
+    }
+
+    var isInstalled: Bool {
+        installedPath != nil
+    }
+
+    static var installedEditors: [EditorType] {
+        allCases.filter { $0.isInstalled }
+    }
+}
+
 /// 持久化服务
 class PersistenceService {
     static let shared = PersistenceService()
@@ -11,6 +76,7 @@ class PersistenceService {
     private struct AppSettings: Codable {
         var defaultProjectId: UUID?
         var language: AppLanguage?
+        var preferredEditor: EditorType?
     }
 
     private var configDirectoryURL: URL {
@@ -129,6 +195,24 @@ class PersistenceService {
 
     func loadLanguage() -> AppLanguage? {
         loadSettings().language
+    }
+
+    func savePreferredEditor(_ editor: EditorType?) {
+        do {
+            ensureConfigDirectoryExists()
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            var settings = loadSettings()
+            settings.preferredEditor = editor
+            let data = try encoder.encode(settings)
+            try data.write(to: settingsFileURL, options: .atomic)
+        } catch {
+            print("保存编辑器设置失败: \(error)")
+        }
+    }
+
+    func loadPreferredEditor() -> EditorType? {
+        loadSettings().preferredEditor
     }
 
     private func loadSettings() -> AppSettings {
