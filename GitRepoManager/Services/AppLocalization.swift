@@ -187,6 +187,26 @@ enum LocalizedKey: Hashable {
     case fileStatusUntracked
     case fileStatusIgnored
     case fileStatusConflicted
+    case commitHistory
+    case viewCommitDetails
+    case copyCommitHash
+    case revertCommit
+    case resetSoftTo
+    case resetHardTo
+    case cherryPick
+    case loadMore
+    case resetHardWarning
+    case resetHardFinalWarning
+    case copiedToClipboard
+    case revertSuccess
+    case resetSuccess
+    case cherryPickSuccess
+    case revertInProgress
+    case resetInProgress
+    case cherryPickInProgress
+    case noCommitHistory
+    case commitDetails
+    case selectCommitToViewDetails
 }
 
 final class AppLocalization: ObservableObject {
@@ -733,7 +753,27 @@ final class AppLocalization: ObservableObject {
             .fileStatusCopied: "已复制",
             .fileStatusUntracked: "未跟踪",
             .fileStatusIgnored: "已忽略",
-            .fileStatusConflicted: "冲突"
+            .fileStatusConflicted: "冲突",
+            .commitHistory: "提交历史",
+            .viewCommitDetails: "查看详情",
+            .copyCommitHash: "复制 Hash",
+            .revertCommit: "撤销此提交",
+            .resetSoftTo: "软重置到此",
+            .resetHardTo: "硬重置到此",
+            .cherryPick: "Cherry-pick",
+            .loadMore: "加载更多",
+            .resetHardWarning: "硬重置会丢弃所有未提交的修改，此操作不可撤销。",
+            .resetHardFinalWarning: "确定要硬重置吗？所有未提交的更改将被永久删除。",
+            .copiedToClipboard: "已复制到剪贴板",
+            .revertSuccess: "已撤销提交",
+            .resetSuccess: "已重置到指定提交",
+            .cherryPickSuccess: "Cherry-pick 成功",
+            .revertInProgress: "撤销提交中...",
+            .resetInProgress: "重置中...",
+            .cherryPickInProgress: "Cherry-pick 中...",
+            .noCommitHistory: "暂无提交历史",
+            .commitDetails: "提交详情",
+            .selectCommitToViewDetails: "选择提交查看详情"
         ],
         .english: [
             .language: "Language",
@@ -904,7 +944,27 @@ final class AppLocalization: ObservableObject {
             .fileStatusCopied: "Copied",
             .fileStatusUntracked: "Untracked",
             .fileStatusIgnored: "Ignored",
-            .fileStatusConflicted: "Conflicted"
+            .fileStatusConflicted: "Conflicted",
+            .commitHistory: "Commit History",
+            .viewCommitDetails: "View Details",
+            .copyCommitHash: "Copy Hash",
+            .revertCommit: "Revert Commit",
+            .resetSoftTo: "Soft Reset To",
+            .resetHardTo: "Hard Reset To",
+            .cherryPick: "Cherry-pick",
+            .loadMore: "Load More",
+            .resetHardWarning: "Hard reset will discard all uncommitted changes. This cannot be undone.",
+            .resetHardFinalWarning: "Are you sure you want to hard reset? All uncommitted changes will be permanently deleted.",
+            .copiedToClipboard: "Copied to clipboard",
+            .revertSuccess: "Commit reverted",
+            .resetSuccess: "Reset to commit",
+            .cherryPickSuccess: "Cherry-pick succeeded",
+            .revertInProgress: "Reverting commit...",
+            .resetInProgress: "Resetting...",
+            .cherryPickInProgress: "Cherry-picking...",
+            .noCommitHistory: "No commit history",
+            .commitDetails: "Commit Details",
+            .selectCommitToViewDetails: "Select a commit to view details"
         ]
     ]
 }

@@ -8,6 +8,9 @@ class RepositoryViewModel: ObservableObject {
 
     @Published var status: GitStatus?
     @Published var branches: [GitBranch] = []
+    @Published var commits: [GitCommit] = []
+    @Published var isLoadingCommits = false
+    @Published var hasMoreCommits = true
     @Published var isLoading = false
     @Published var isOperating = false
     @Published private(set) var inProgressKey: LocalizedKey?
@@ -15,8 +18,18 @@ class RepositoryViewModel: ObservableObject {
     @Published var lastError: String?
     @Published var operationMessage: String?
 
+    // 提交详情相关
+    @Published var selectedCommit: GitCommit?
+    @Published var selectedCommitDetail: CommitDetail?
+    @Published var isLoadingCommitDetail = false
+    @Published var selectedCommitFile: CommitFile?
+    @Published var selectedCommitFileDiff: String?
+    @Published var isLoadingFileDiff = false
+
     private let gitService = GitService()
     private let l10n = AppLocalization.shared
+    private var commitSkip = 0
+    private let commitLimit = 50
 
     var localBranches: [GitBranch] {
         branches.filter { !$0.isRemote }
@@ -73,6 +86,141 @@ class RepositoryViewModel: ObservableObject {
             operationMessage = l10n.t(.fetchedRemoteUpdates)
         } catch {
             lastError = error.localizedDescription
+        }
+    }
+
+    // MARK: - 提交历史
+
+    func loadCommitHistory(reset: Bool = false) async {
+        guard !isLoadingCommits else { return }
+        isLoadingCommits = true
+        defer { isLoadingCommits = false }
+
+        if reset {
+            commitSkip = 0
+            commits = []
+            hasMoreCommits = true
+        }
+
+        do {
+            let newCommits = try await gitService.getCommitHistory(
+                in: repository.path,
+                limit: commitLimit,
+                skip: commitSkip
+            )
+            commits.append(contentsOf: newCommits)
+            commitSkip += newCommits.count
+            hasMoreCommits = newCommits.count == commitLimit
+        } catch {
+            lastError = error.localizedDescription
+            hasMoreCommits = false
+        }
+    }
+
+    func revertCommit(_ commit: GitCommit) async {
+        guard beginOperation(.revertInProgress) else { return }
+        defer { endOperation() }
+
+        do {
+            try await gitService.revert(commit: commit.id, in: repository.path)
+            await loadStatus(showProgress: false)
+            await loadCommitHistory(reset: true)
+            operationMessage = l10n.t(.revertSuccess)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func resetSoftToCommit(_ commit: GitCommit) async {
+        guard beginOperation(.resetInProgress) else { return }
+        defer { endOperation() }
+
+        do {
+            try await gitService.resetSoft(to: commit.id, in: repository.path)
+            await loadStatus(showProgress: false)
+            await loadCommitHistory(reset: true)
+            operationMessage = l10n.t(.resetSuccess)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func resetHardToCommit(_ commit: GitCommit) async {
+        guard beginOperation(.resetInProgress) else { return }
+        defer { endOperation() }
+
+        do {
+            try await gitService.resetHard(to: commit.id, in: repository.path)
+            await loadStatus(showProgress: false)
+            await loadCommitHistory(reset: true)
+            operationMessage = l10n.t(.resetSuccess)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func cherryPickCommit(_ commit: GitCommit) async {
+        guard beginOperation(.cherryPickInProgress) else { return }
+        defer { endOperation() }
+
+        do {
+            try await gitService.cherryPick(commit: commit.id, in: repository.path)
+            await loadStatus(showProgress: false)
+            await loadCommitHistory(reset: true)
+            operationMessage = l10n.t(.cherryPickSuccess)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    /// 选择一个提交并加载其详情
+    func selectCommit(_ commit: GitCommit?) async {
+        // 清除之前的选择
+        selectedCommitFile = nil
+        selectedCommitFileDiff = nil
+
+        guard let commit = commit else {
+            selectedCommit = nil
+            selectedCommitDetail = nil
+            return
+        }
+
+        selectedCommit = commit
+        isLoadingCommitDetail = true
+        defer { isLoadingCommitDetail = false }
+
+        do {
+            selectedCommitDetail = try await gitService.getCommitDetail(
+                commit: commit.fullHash,
+                in: repository.path
+            )
+        } catch {
+            lastError = error.localizedDescription
+            selectedCommitDetail = nil
+        }
+    }
+
+    /// 选择提交中的文件并加载其 diff
+    func selectCommitFile(_ file: CommitFile?) async {
+        guard let file = file, let commit = selectedCommit else {
+            selectedCommitFile = nil
+            selectedCommitFileDiff = nil
+            return
+        }
+
+        selectedCommitFile = file
+        isLoadingFileDiff = true
+        defer { isLoadingFileDiff = false }
+
+        do {
+            selectedCommitFileDiff = try await gitService.getCommitFileDiff(
+                commit: commit.fullHash,
+                filePath: file.path,
+                in: repository.path
+            )
+        } catch {
+            lastError = error.localizedDescription
+            selectedCommitFileDiff = nil
         }
     }
 

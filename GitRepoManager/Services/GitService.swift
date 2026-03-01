@@ -649,4 +649,84 @@ actor GitService {
     func showFileAtHEAD(path: String, in directory: String) async throws -> String {
         try await runner.execute(["show", "HEAD:\(path)"], in: directory)
     }
+
+    // MARK: - 提交历史
+
+    /// 获取提交历史（分页）
+    func getCommitHistory(in directory: String, limit: Int = 50, skip: Int = 0) async throws -> [GitCommit] {
+        let output = try await runner.execute(
+            ["log", "--format=%h|%H|%s|%an|%ar|%at", "-n", "\(limit)", "--skip", "\(skip)"],
+            in: directory,
+            timeout: 30.0
+        )
+
+        return output
+            .components(separatedBy: "\n")
+            .filter { !$0.isEmpty }
+            .compactMap { GitCommit.parse(from: $0) }
+    }
+
+    /// 软重置到指定提交（保留修改在工作区）
+    func resetSoft(to commit: String, in directory: String) async throws {
+        _ = try await runner.execute(
+            ["reset", "--soft", commit],
+            in: directory,
+            timeout: 30.0
+        )
+    }
+
+    /// 硬重置到指定提交（丢弃所有修改）
+    func resetHard(to commit: String, in directory: String) async throws {
+        _ = try await runner.execute(
+            ["reset", "--hard", commit],
+            in: directory,
+            timeout: 30.0
+        )
+    }
+
+    /// 撤销指定提交（创建新提交）
+    func revert(commit: String, in directory: String) async throws {
+        _ = try await runner.execute(
+            ["revert", commit, "--no-edit"],
+            in: directory,
+            timeout: 30.0
+        )
+    }
+
+    /// Cherry-pick 指定提交
+    func cherryPick(commit: String, in directory: String) async throws {
+        _ = try await runner.execute(
+            ["cherry-pick", commit],
+            in: directory,
+            timeout: 30.0
+        )
+    }
+
+    /// 获取某次提交的详细信息（变更文件列表）
+    func getCommitDetail(commit: String, in directory: String) async throws -> CommitDetail {
+        // 获取提交的完整信息
+        let showOutput = try await runner.execute(
+            ["show", commit, "--format=%H|%s|%b|%an|%ae|%ar|%at", "--stat", "--stat-width=1000"],
+            in: directory,
+            timeout: 30.0
+        )
+
+        // 获取变更文件列表
+        let filesOutput = try await runner.execute(
+            ["diff-tree", "--no-commit-id", "--name-status", "-r", commit],
+            in: directory,
+            timeout: 30.0
+        )
+
+        return CommitDetail.parse(showOutput: showOutput, filesOutput: filesOutput)
+    }
+
+    /// 获取某次提交中某个文件的 diff
+    func getCommitFileDiff(commit: String, filePath: String, in directory: String) async throws -> String {
+        try await runner.execute(
+            ["show", commit, "--", filePath],
+            in: directory,
+            timeout: 30.0
+        )
+    }
 }

@@ -45,6 +45,9 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 		023 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 123; };
 		024 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124; };
 		025 /* AddProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125; };
+		026 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126; };
+		027 /* GitCommit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127; };
+		028 /* CommitRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,6 +77,9 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 		123 /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
 		124 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
 		125 /* AddProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProjectSheet.swift; sourceTree = "<group>"; };
+		126 /* AppLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalization.swift; sourceTree = "<group>"; };
+		127 /* GitCommit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitCommit.swift; sourceTree = "<group>"; };
+		128 /* CommitRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommitRowView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -121,6 +127,7 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 				105 /* GitStatus.swift */,
 				106 /* GitFile.swift */,
 				107 /* GitBranch.swift */,
+				127 /* GitCommit.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -132,6 +139,7 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 				109 /* GitService.swift */,
 				110 /* ProjectScanner.swift */,
 				111 /* PersistenceService.swift */,
+				126 /* AppLocalization.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -176,6 +184,7 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 				120 /* FileListView.swift */,
 				121 /* DiffPreviewView.swift */,
 				122 /* BranchesTabView.swift */,
+				128 /* CommitRowView.swift */,
 			);
 			path = Detail;
 			sourceTree = "<group>";
@@ -269,6 +278,9 @@ cat > GitRepoManager.xcodeproj/project.pbxproj << 'PBXPROJ'
 				023 /* TerminalView.swift in Sources */,
 				024 /* StatusBadge.swift in Sources */,
 				025 /* AddProjectSheet.swift in Sources */,
+				026 /* AppLocalization.swift in Sources */,
+				027 /* GitCommit.swift in Sources */,
+				028 /* CommitRowView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -30,10 +30,11 @@
 		021 /* DiffPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121; };
 		022 /* BranchesTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122; };
 		023 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 123; };
-			024 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124; };
-			025 /* AddProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125; };
-			026 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126; };
-			027 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 127; };
+		024 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 124; };
+		025 /* AddProjectSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125; };
+		026 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126; };
+		027 /* GitCommit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127; };
+		028 /* CommitRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,10 +62,11 @@
 		121 /* DiffPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffPreviewView.swift; sourceTree = "<group>"; };
 		122 /* BranchesTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BranchesTabView.swift; sourceTree = "<group>"; };
 		123 /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
-			124 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
-			125 /* AddProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProjectSheet.swift; sourceTree = "<group>"; };
-			126 /* AppLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalization.swift; sourceTree = "<group>"; };
-			127 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		124 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
+		125 /* AddProjectSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddProjectSheet.swift; sourceTree = "<group>"; };
+		126 /* AppLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalization.swift; sourceTree = "<group>"; };
+		127 /* GitCommit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitCommit.swift; sourceTree = "<group>"; };
+		128 /* CommitRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommitRowView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -84,7 +86,6 @@
 				212 /* Services */,
 				213 /* ViewModels */,
 				214 /* Views */,
-				219 /* Resources */,
 			);
 			path = GitRepoManager;
 			sourceTree = "<group>";
@@ -113,6 +114,7 @@
 				105 /* GitStatus.swift */,
 				106 /* GitFile.swift */,
 				107 /* GitBranch.swift */,
+				127 /* GitCommit.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -121,12 +123,12 @@
 			isa = PBXGroup;
 			children = (
 				108 /* GitCommandRunner.swift */,
-					109 /* GitService.swift */,
-					110 /* ProjectScanner.swift */,
-					111 /* PersistenceService.swift */,
-					126 /* AppLocalization.swift */,
-				);
-				path = Services;
+				109 /* GitService.swift */,
+				110 /* ProjectScanner.swift */,
+				111 /* PersistenceService.swift */,
+				126 /* AppLocalization.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 		213 /* ViewModels */ = {
@@ -169,6 +171,7 @@
 				120 /* FileListView.swift */,
 				121 /* DiffPreviewView.swift */,
 				122 /* BranchesTabView.swift */,
+				128 /* CommitRowView.swift */,
 			);
 			path = Detail;
 			sourceTree = "<group>";
@@ -190,14 +193,6 @@
 			path = Components;
 			sourceTree = "<group>";
 		};
-		219 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				127 /* Assets.xcassets */,
-			);
-			path = Resources;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -206,7 +201,6 @@
 			buildConfigurationList = 400;
 			buildPhases = (
 				301 /* Sources */,
-				303 /* Resources */,
 				302 /* Frameworks */,
 			);
 			buildRules = (
@@ -269,24 +263,15 @@
 				021 /* DiffPreviewView.swift in Sources */,
 				022 /* BranchesTabView.swift in Sources */,
 				023 /* TerminalView.swift in Sources */,
-					024 /* StatusBadge.swift in Sources */,
-					025 /* AddProjectSheet.swift in Sources */,
-					026 /* AppLocalization.swift in Sources */,
-				);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXSourcesBuildPhase section */
-
-/* Begin PBXResourcesBuildPhase section */
-		303 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				027 /* Assets.xcassets in Resources */,
+				024 /* StatusBadge.swift in Sources */,
+				025 /* AddProjectSheet.swift in Sources */,
+				026 /* AppLocalization.swift in Sources */,
+				027 /* GitCommit.swift in Sources */,
+				028 /* CommitRowView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* End PBXResourcesBuildPhase section */
+/* End PBXSourcesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		302 /* Frameworks */ = {
