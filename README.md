@@ -6,89 +6,89 @@
 
 - **项目管理**：添加项目根目录，自动递归扫描所有 Git 仓库
 - **状态显示**：实时显示每个仓库的分支、修改数、未推送提交数
-- **基础操作**：暂存、提交、拉取、推送
-- **分支管理**：切换分支、创建分支、合并分支
+- **基础操作**：暂存、提交、拉取、推送、同步
+- **分支管理**：切换分支、创建分支、合并分支、获取远程
 - **内置终端**：执行任意 git 命令
+- **项目组织**：置顶项目、添加备注、拖拽排序
+- **多语言支持**：中文 / English
+- **编辑器集成**：右键快速在 VSCode / Cursor / Xcode / IDEA / PyCharm 中打开
+- **快捷操作**：右键菜单打开 Finder、终端
 
-## 如何创建 Xcode 项目
+## 安装
 
-1. 打开 Xcode，选择 **File → New → Project**
-2. 选择 **macOS → App**，点击 Next
-3. 填写项目信息：
-   - Product Name: `GitRepoManager`
-   - Team: 你的开发者账号
-   - Organization Identifier: 你的组织标识符
-   - Interface: **SwiftUI**
-   - Language: **Swift**
-4. 选择保存位置（直接选择当前仓库根目录）
-5. 点击 Create
+### 方式一：直接下载（推荐）
 
-### 导入源文件
+1. 下载 `GitRepoManager-macOS.dmg`
+2. 打开 DMG，将应用拖入 Applications 文件夹
+3. 首次打开时，右键点击应用 → 打开（绕过 Gatekeeper）
 
-创建项目后：
+### 方式二：从源码编译
 
-1. 删除 Xcode 自动生成的 `ContentView.swift` 和 `GitRepoManagerApp.swift`
-2. 在 Xcode 中右键项目 → **Add Files to "GitRepoManager"**
-3. 选择仓库根目录下 `GitRepoManager` 目录里的所有文件夹（App, Models, Services, ViewModels, Views）
-4. 确保勾选 "Copy items if needed" 和 "Create groups"
-5. 点击 Add
+需要 Xcode 14.0+，运行打包脚本：
 
-### 项目设置
-
-1. 选择项目 → Targets → GitRepoManager
-2. **General** 标签页：
-   - Minimum Deployments: macOS 13.0
-3. **Signing & Capabilities** 标签页：
-   - 添加 "App Sandbox" capability
-   - 在 App Sandbox 中启用：
-     - File Access → User Selected File: Read/Write
-     - 或者关闭 App Sandbox（开发时更方便）
-
-### 运行
-
-点击 Run (⌘R) 即可运行应用。
+```bash
+./scripts/package_macos.sh Release --install
+```
 
 ## 使用方法
 
-1. 点击右上角 **+** 按钮添加项目目录
+1. 点击工具栏 **+** 按钮添加项目目录
 2. 应用会自动扫描目录下的所有 Git 仓库
 3. 在左侧列表选择仓库查看详情
 4. 使用按钮执行常用操作，或切换到终端标签页执行自定义命令
 
-## 项目结构
+### 快捷键
 
-```text
-.
-├── GitRepoManager/
-│   ├── App/
-│   │   └── GitRepoManagerApp.swift      # 应用入口
-│   ├── Models/
-│   │   ├── Project.swift                # 项目模型
-│   │   ├── GitRepository.swift          # 仓库模型
-│   │   ├── GitStatus.swift              # 状态模型
-│   │   ├── GitFile.swift                # 文件模型
-│   │   └── GitBranch.swift              # 分支模型
-│   ├── Services/
-│   │   ├── GitCommandRunner.swift       # Git 命令执行器
-│   │   ├── GitService.swift             # Git 服务层
-│   │   ├── ProjectScanner.swift         # 项目扫描器
-│   │   └── PersistenceService.swift     # 持久化服务
-│   ├── ViewModels/
-│   │   ├── MainViewModel.swift          # 主视图模型
-│   │   ├── RepositoryViewModel.swift    # 仓库视图模型
-│   │   └── TerminalViewModel.swift      # 终端视图模型
-│   └── Views/
-│       ├── MainView.swift               # 主视图
-│       ├── Sidebar/                     # 侧边栏
-│       ├── Detail/                      # 详情视图
-│       ├── Terminal/                    # 终端视图
-│       └── Components/                  # 通用组件
-├── GitRepoManager.xcodeproj/
-├── Package.swift
-└── create_xcode_project.sh
-```
+| 快捷键 | 功能 |
+|--------|------|
+| `Cmd + R` | 刷新所有仓库状态 |
+| `Cmd + N` | 添加新项目 |
+
+### 右键菜单
+
+**项目右键：**
+- 重新扫描
+- 置顶/取消置顶
+- 编辑备注
+- 移除项目
+
+**仓库右键：**
+- 在编辑器中打开（支持多编辑器选择）
+- 在 Finder 中显示
+- 在终端中打开
+- 刷新状态
+
+### 设置
+
+工具栏提供：
+- 默认编辑器选择（自动检测已安装的编辑器）
+- 语言切换（中文 / English）
 
 ## 系统要求
 
 - macOS 13.0 或更高版本
-- Xcode 14.0 或更高版本
+
+## 数据存储
+
+配置数据存储在 `~/.project-git-status/config/` 目录：
+- `projects.json` - 项目列表
+- `settings.json` - 应用设置
+
+## 项目结构
+
+```text
+GitRepoManager/
+├── App/                    # 应用入口
+├── Models/                 # 数据模型
+├── Services/               # 服务层（Git命令、持久化等）
+├── ViewModels/             # 视图模型
+└── Views/                  # UI视图
+    ├── Sidebar/            # 侧边栏
+    ├── Detail/             # 详情视图
+    ├── Terminal/           # 终端视图
+    └── Components/         # 通用组件
+```
+
+## 许可证
+
+MIT License
